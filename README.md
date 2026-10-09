@@ -1,5 +1,33 @@
 # Poker Java MVC
 
+## Chạy dự án trên Windows
+
+Dự án gồm **server Java thuần** và **client JavaFX**. Server kết nối MySQL và mở WebSocket; mỗi client chỉ kết nối tới WebSocket của server, không kết nối MySQL trực tiếp. Cần JDK **26**, Docker Desktop (nếu dùng MySQL bằng Docker), và kết nối Internet trong lần Maven tải thư viện đầu tiên.
+
+1. Kiểm tra JDK: chạy `java -version` và `./mvnw.cmd -version` trong thư mục `poker-mvc`. Cả hai cần dùng JDK 26. Nếu VS Code vẫn chọn JDK cũ, cấu hình **Java: Configure Java Runtime** và tải lại Java Projects.
+2. Tại thư mục `poker-mvc`, sao chép [`.env.example`](.env.example) thành `.env`, rồi tự đặt `MYSQL_ROOT_PASSWORD` và `DB_PASSWORD` **giống nhau**. Đặt `JWT_SECRET` ngẫu nhiên dài ít nhất 32 byte để token còn hợp lệ sau khi khởi động lại server. `.env` là file riêng của từng máy, không được commit. Bản ở `D:\LTM` hiện cũng có `.env` riêng cho Compose ở thư mục cha và cấu hình Run của VS Code.
+3. Chạy `docker compose up -d mysql-db` trong `poker-mvc`. [Cấu hình Docker](docker-compose.yaml) dùng MySQL 8, cổng máy host **3307**, database **poker_java** và mount [`database/init.sql`](database/init.sql). Redis có trong Compose nhưng không bắt buộc đối với server Java thuần. Nếu đang chạy Compose cũ ở `D:\LTM`, **chỉ dùng một trong hai cấu hình** để tránh trùng cổng/container; cấu hình ở thư mục cha đọc `D:\LTM\.env`, còn cấu hình trong `poker-mvc` đọc `poker-mvc\.env`. Dữ liệu MySQL cũ không tự chuyển sang container mới.
+4. Trên **máy chạy server**, chương trình đọc `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SERVER_PORT` và `JWT_SECRET` từ biến môi trường. URL mặc định trong `.env.example` là `jdbc:mysql://localhost:3307/poker_java?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh`. Với bản ở `D:\LTM`, chọn **Poker Server** trong Run and Debug: cấu hình `D:\LTM\.vscode\launch.json` đọc các biến từ `D:\LTM\.env`. Nếu clone repo riêng, cấu hình `envFile` tương ứng trong VS Code hoặc nạp `.env` vào terminal trước khi chạy `com.poker.ServerMain`. Ví dụ PowerShell khi muốn đặt thủ công:
+
+   ```powershell
+   $env:DB_URL = 'jdbc:mysql://localhost:3307/poker_java?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh'
+   $env:DB_USERNAME = 'root'
+   $env:DB_PASSWORD = '<mật khẩu bạn đặt trong .env>'
+   $env:SERVER_PORT = '8080'
+   $env:JWT_SECRET = '<chuỗi ngẫu nhiên ít nhất 32 byte>'
+   ```
+
+5. Chạy class `com.poker.ServerMain` với các biến môi trường ở bước 4. Chờ dòng `[SERVER] MySQL connected` và `WebSocket running`. Cổng 8080 phải còn trống; không chạy hai server cùng lúc trên một database.
+6. Chạy **Poker Client (JavaFX)** trong VS Code hoặc `com.poker.ClientMain`. Khi client chạy cùng máy server, URL mặc định là `ws://localhost:8080/ws`. Máy khác chỉ cần JDK/app client và đặt `POKER_WS_URL=ws://<IP_MAY_SERVER>:8080/ws`; **không** cần MySQL hay chạy `ServerMain` trên máy client. Mở TCP 8080 trong firewall máy server, và bảo đảm hai máy truy cập được nhau. Ví dụ khi server còn dùng địa chỉ LAN `192.168.10.135`: `ws://192.168.10.135:8080/ws`; địa chỉ này có thể đổi khi mạng đổi. Với người chơi ở mạng Internet khác, chỉ IP LAN là chưa đủ; cần VPN hoặc hạ tầng mạng phù hợp.
+
+Lệnh kiểm tra nhanh: `docker compose ps` tại thư mục chứa Compose đang dùng để xem MySQL, `Test-NetConnection localhost -Port 3307` để kiểm tra cổng database, và `.\mvnw.cmd test` tại `poker-mvc` để chạy kiểm thử. Nếu báo **Access denied**, kiểm tra `DB_USERNAME`/`DB_PASSWORD` có khớp tài khoản MySQL hiện tại. Nếu báo **Communications link failure**, kiểm tra Docker và cổng 3307. Docker chỉ chạy `init.sql` khi tạo database mới lần đầu; đổi mật khẩu trong `.env` **không** đổi mật khẩu của database đã tồn tại.
+
+### Git và mật khẩu
+
+`.gitignore` bỏ qua output Maven, file `.class`, metadata IDE, log, backup và `.env`; **không** bỏ qua source, assets đang dùng, `pom.xml`, Maven Wrapper, Compose hoặc `database/init.sql`. Repo `poker-multiple` có `docker-compose.yaml` và `.env.example` nhưng **không có `.env` thật**. File Compose cũ ở `D:\LTM` cũng đã đọc mật khẩu từ `D:\LTM\.env`. Nếu từng đẩy bản Compose cũ có mật khẩu lên một repo khác, mật khẩu đó vẫn có thể còn trong lịch sử Git; `.gitignore` hoặc commit sửa file không xóa được lịch sử. Khi đó hãy đổi mật khẩu ở MySQL và các nơi dùng lại mật khẩu ấy. Không đăng nội dung `docker compose config` lên mạng vì lệnh này có thể in ra biến đã được thay giá trị.
+
+Để tránh thêm nhầm file trước khi push, kiểm tra `git status --short` và `git diff --cached --name-only`. Không chạy `git add .` ở thư mục cha `D:\LTM` nếu mục tiêu chỉ là repo `poker-multiple`.
+
 Đây là bản mã riêng trong `D:\LTM\poker-mvc`; dự án cũ ở `D:\LTM\src\main` không bị ghi đè.
 
 ## Cấu trúc đơn giản

@@ -1,0 +1,20 @@
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: poker_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Create .env from .env.example}
+      MYSQL_DATABASE: poker_java
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+
+  # Optional: current Java WebSocket server does not require Redis.
+  redis-cache:
+    image: redis:alpine
+    container_name: poker_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
