@@ -39,7 +39,7 @@ Ví dụ muốn dùng cổng 8081: trên máy server đặt `SERVER_PORT=8081` r
 
 Luồng đang dùng: `JavaFX View → client Controller → PokerSocketClient → WebSocket → PokerWebSocketServer → CommandHandler → server Controller → Model operation → DAO → MySQL`. `ConnectionManager` giữ subscription và phiên xác thực riêng cho mỗi socket. `java.net.http.HttpClient` chỉ được dùng để tạo WebSocket theo API JDK, không gửi REST request.
 
-**Giới hạn còn lại:** runtime một ván hiện chỉ sống trong bộ nhớ server. Khởi động lại giữa ván sẽ hủy ván dở, không khôi phục bộ bài/lượt; chip trên bàn trong MySQL giữ nguyên như trước ván dở. Chưa có timer lượt, ghi đầy đủ lịch sử hand/action, xếp hạng sau ván và kiểm thử tích hợp với MySQL thật trong bộ test tự động. Không nên coi đây là bản multiplayer hoàn chỉnh. Bản sao lưu trước khi dọn: `D:\LTM\backups\poker-mvc-pre-structure-clean-2026-10-05.zip`.
+**Giới hạn còn lại:** runtime một ván hiện chỉ sống trong bộ nhớ server. Khởi động lại giữa ván sẽ hủy ván dở, không khôi phục bộ bài/lượt; chip trên bàn trong MySQL giữ nguyên như trước ván dở. Server đã có timer lượt 15 giây với Check/Fold tự động, nhưng chưa ghi đầy đủ lịch sử hand/action, cập nhật xếp hạng sau ván và kiểm thử tích hợp với MySQL thật trong bộ test tự động. Không nên coi đây là bản multiplayer hoàn chỉnh. Bản sao lưu trước khi dọn: `D:\LTM\backups\poker-mvc-pre-structure-clean-2026-10-05.zip`.
 
 ## Online/offline và phòng chờ
 
