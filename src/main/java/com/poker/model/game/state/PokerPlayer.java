@@ -1,0 +1,222 @@
+package com.poker.model.game.state;
+
+import com.poker.model.game.card.Card;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+
+/** Authoritative state for one player participating in the current hand. */
+public final class PokerPlayer {
+
+    public static final int MINIMUM_SEAT_NUMBER = 1;
+    public static final int MAXIMUM_SEAT_NUMBER = 9;
+
+    private final long userId;
+    private final int seatNumber;
+    private long tableChips;
+    private long currentBet;
+    private long totalCommitted;
+    private List<Card> holeCards;
+    private PokerPlayerState playerState;
+    private boolean connected;
+    private boolean leaving;
+
+    public PokerPlayer(
+            long userId,
+            int seatNumber,
+            long tableChips,
+            long currentBet,
+            long totalCommitted,
+            PokerPlayerState playerState,
+            List<Card> holeCards) {
+        this(
+                userId,
+                seatNumber,
+                tableChips,
+                currentBet,
+                totalCommitted,
+                playerState,
+                holeCards,
+                true,
+                false);
+    }
+
+    public PokerPlayer(
+            long userId,
+            int seatNumber,
+            long tableChips,
+            long currentBet,
+            long totalCommitted,
+            PokerPlayerState playerState,
+            List<Card> holeCards,
+            boolean connected,
+            boolean leaving) {
+        if (userId <= 0) {
+            throw new IllegalArgumentException("userId must be positive");
+        }
+        if (seatNumber < MINIMUM_SEAT_NUMBER || seatNumber > MAXIMUM_SEAT_NUMBER) {
+            throw new IllegalArgumentException("seatNumber must be between 1 and 9");
+        }
+        requireNonNegative(tableChips, "tableChips");
+        requireNonNegative(currentBet, "currentBet");
+        requireNonNegative(totalCommitted, "totalCommitted");
+
+        this.userId = userId;
+        this.seatNumber = seatNumber;
+        this.tableChips = tableChips;
+        this.currentBet = currentBet;
+        this.totalCommitted = totalCommitted;
+        this.playerState = Objects.requireNonNull(playerState, "playerState must not be null");
+        this.holeCards = validateHoleCards(holeCards);
+        this.connected = connected;
+        this.leaving = leaving;
+        if (leaving && playerState != PokerPlayerState.FOLDED) {
+            throw new IllegalArgumentException("a leaving player must be FOLDED for hand participation");
+        }
+    }
+
+    public long userId() {
+        return userId;
+    }
+
+    public int seatNumber() {
+        return seatNumber;
+    }
+
+    public long tableChips() {
+        return tableChips;
+    }
+
+    public long currentBet() {
+        return currentBet;
+    }
+
+    public long totalCommitted() {
+        return totalCommitted;
+    }
+
+    public PokerPlayerState playerState() {
+        return playerState;
+    }
+
+    public List<Card> holeCards() {
+        return holeCards;
+    }
+
+    /** Deals this hand's private cards exactly once after blind posting. */
+    public void dealHoleCards(List<Card> cards) {
+        if (!holeCards.isEmpty()) {
+            throw new IllegalStateException("hole cards are already dealt");
+        }
+        List<Card> dealt = validateHoleCards(cards);
+        if (dealt.size() != 2) {
+            throw new IllegalArgumentException("dealt hole cards must contain exactly 2 cards");
+        }
+        holeCards = dealt;
+    }
+
+    public boolean isConnected() {
+        return connected;
+    }
+
+    public boolean isDisconnected() {
+        return !connected;
+    }
+
+    public boolean isLeaving() {
+        return leaving;
+    }
+
+    /** Whether this player remains eligible for a future pot award. */
+    public boolean isEligibleToWin() {
+        return playerState != PokerPlayerState.FOLDED && !leaving;
+    }
+
+    /** Includes disconnected active players so their official turn is preserved for timeout handling. */
+    public boolean canReceiveBettingTurn() {
+        return playerState == PokerPlayerState.ACTIVE && !leaving;
+    }
+
+    /** Normal client actions additionally require an active connection. */
+    public boolean canAcceptClientBettingAction() {
+        return canReceiveBettingTurn() && connected;
+    }
+
+    public void markFolded() {
+        playerState = PokerPlayerState.FOLDED;
+    }
+
+    public void markAllIn() {
+        if (playerState != PokerPlayerState.ACTIVE) {
+            throw new IllegalStateException("only an ACTIVE player can become ALL_IN");
+        }
+        playerState = PokerPlayerState.ALL_IN;
+    }
+
+    public void markDisconnected() {
+        connected = false;
+    }
+
+    public void markConnected() {
+        connected = true;
+    }
+
+    public void markLeaving() {
+        leaving = true;
+        playerState = PokerPlayerState.FOLDED;
+    }
+
+    /** Commits chips immediately while preserving all player accounting invariants. */
+    public void commitChips(long amount) {
+        if (playerState != PokerPlayerState.ACTIVE || leaving) {
+            throw new IllegalStateException("only an ACTIVE player can commit chips");
+        }
+        requireNonNegative(amount, "amount");
+        if (amount > tableChips) {
+            throw new IllegalArgumentException("amount cannot exceed tableChips");
+        }
+
+        long updatedCurrentBet = Math.addExact(currentBet, amount);
+        long updatedTotalCommitted = Math.addExact(totalCommitted, amount);
+        tableChips -= amount;
+        currentBet = updatedCurrentBet;
+        totalCommitted = updatedTotalCommitted;
+        if (tableChips == 0) {
+            playerState = PokerPlayerState.ALL_IN;
+        }
+    }
+
+    /** Clears only the street-local wager while preserving hand commitment. */
+    public void resetCurrentBetForNewStreet() {
+        currentBet = 0;
+    }
+
+    /** Applies this hand's prevalidated credits and closes its chip-accounting lifecycle. */
+    public void applyHandSettlement(long creditedChips) {
+        requireNonNegative(creditedChips, "creditedChips");
+        tableChips = Math.addExact(tableChips, creditedChips);
+        currentBet = 0;
+        totalCommitted = 0;
+    }
+
+    private static List<Card> validateHoleCards(List<Card> holeCards) {
+        Objects.requireNonNull(holeCards, "holeCards must not be null");
+        if (holeCards.size() != 0 && holeCards.size() != 2) {
+            throw new IllegalArgumentException("holeCards must contain exactly 0 or 2 cards");
+        }
+        if (holeCards.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("holeCards must not contain null");
+        }
+        if (new HashSet<>(holeCards).size() != holeCards.size()) {
+            throw new IllegalArgumentException("holeCards must not contain duplicates");
+        }
+        return List.copyOf(holeCards);
+    }
+
+    private static void requireNonNegative(long value, String name) {
+        if (value < 0) {
+            throw new IllegalArgumentException(name + " must not be negative");
+        }
+    }
+}
