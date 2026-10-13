@@ -12,6 +12,7 @@ import javafx.scene.control.Button;
 import com.poker.view.room.ControlPanelView;
 import com.poker.view.room.PokerRoomView;
 import com.poker.view.room.PokerTableContainer;
+import com.poker.view.SoundEffects;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -62,6 +63,9 @@ public final class RoomScreens {
     }
 
     public void reset() {
+        SoundEffects.stop(SoundEffects.Sound.WIN);
+        SoundEffects.stop(SoundEffects.Sound.LOSE);
+        SoundEffects.stop(SoundEffects.Sound.PAYOUT);
         if (table != null) table.stopCardAnimations();
         if (roomId != 0) api.unsubscribe("/topic/room/" + roomId);
         if (gameId != null) api.unsubscribe("/topic/game/" + gameId);
@@ -138,6 +142,17 @@ public final class RoomScreens {
             String type = string(event, "type");
             if ("CHAT_MESSAGE".equals(type)) appendChat(event.getAsJsonObject("payload"));
             else if ("CHAT_CHANGED".equals(type)) refreshChat();
+            else if ("NEXT_HAND_CANCELLED".equals(type)) {
+                if (gameId != null) api.unsubscribe("/topic/game/" + gameId);
+                if (table != null) table.stopCardAnimations();
+                if (table != null) table.clearHandResult();
+                gameId = null;
+                snapshot = null;
+                seatSignature = "";
+                displayedResultGameId = null;
+                displayedResultTable = null;
+                refreshRoom();
+            }
             else { refreshRoom(); refreshGame(); }
         }));
         roomScreen();
@@ -289,18 +304,34 @@ public final class RoomScreens {
 
     public void refreshGame() {
         if (roomId == 0) return;
-        api.request("GET", "/api/v1/games/active/room/" + roomId, null).thenAccept(active -> {
+        long requestedRoomId = roomId;
+        api.request("GET", "/api/v1/games/active/room/" + requestedRoomId, null).thenAccept(active -> {
             String id = string(active, "gameId");
-            api.subscribe("/topic/game/" + id, event -> Platform.runLater(() -> {
-                if ("TIMER_UPDATE".equals(string(event, "type"))) {
-                    JsonObject timer = event.getAsJsonObject("payload");
-                    JsonObject currentTurn = snapshot == null ? null : snapshot.getAsJsonObject("turn");
-                    if (timer != null && currentTurn != null
-                            && string(timer, "turnId").equals(string(currentTurn, "turnId")))
-                        renderTimer(number(timer, "remainingSeconds"));
-                } else refreshSnapshot(id);
-            }));
-            Platform.runLater(() -> { gameId = id; refreshSnapshot(id); });
+            Platform.runLater(() -> {
+                if (roomId != requestedRoomId) return;
+                if (!id.equals(gameId) && gameId != null)
+                    api.unsubscribe("/topic/game/" + gameId);
+                if (!id.equals(gameId)) {
+                    snapshot = null;
+                    if (table != null) table.clearHandResult();
+                }
+                gameId = id;
+                api.subscribe("/topic/game/" + id, event -> Platform.runLater(() -> {
+                    if (roomId != requestedRoomId || !id.equals(gameId)) return;
+                    String type = string(event, "type");
+                    if ("ACTION_APPLIED".equals(type)) {
+                        JsonObject payload = event.getAsJsonObject("payload");
+                        if (payload != null) playActionSound(string(payload, "actionType"));
+                    } else if ("TIMER_UPDATE".equals(type)) {
+                        JsonObject timer = event.getAsJsonObject("payload");
+                        JsonObject currentTurn = snapshot == null ? null : snapshot.getAsJsonObject("turn");
+                        if (timer != null && currentTurn != null
+                                && string(timer, "turnId").equals(string(currentTurn, "turnId")))
+                            renderTimer(number(timer, "remainingSeconds"));
+                    } else refreshSnapshot(id);
+                }));
+                refreshSnapshot(id);
+            });
         }).exceptionally(ex -> null); // 404 is normal while waiting for a game.
     }
 
@@ -359,7 +390,8 @@ public final class RoomScreens {
         JsonObject turn = snapshot.has("turn") && snapshot.get("turn").isJsonObject()
                 ? snapshot.getAsJsonObject("turn") : null;
         String turnId = turn == null ? "" : string(turn, "turnId");
-        if (!turnId.equals(displayedTurnId)) {
+        boolean turnChanged = !turnId.equals(displayedTurnId);
+        if (turnChanged) {
             displayedTurnId = turnId;
             turnSeconds = 15;
         }
@@ -367,12 +399,14 @@ public final class RoomScreens {
         if (turn != null) for (JsonElement action : turn.getAsJsonArray("legalActions")) legal.add(action.getAsString());
         long actorId = number(state, "currentTurnUserId");
         boolean myTurn = actorId != 0 && actorId == api.userId();
+        if (turnChanged && myTurn) SoundEffects.play(SoundEffects.Sound.YOUR_TURN);
         String actorName = playerName(players, actorId);
         boolean seated = false;
         if (room != null) for (JsonElement memberElement : room.getAsJsonArray("members")) {
             JsonObject member = memberElement.getAsJsonObject();
             if (number(member, "userId") == api.userId() && hasSeat(member)) seated = true;
         }
+        boolean resultForSeatedPlayer = seated;
         uiState = !seated ? RoomUiState.SPECTATING
                 : "FINISHED".equals(phase) ? RoomUiState.GAME_FINISHED
                 : myTurn ? RoomUiState.PLAYING_MY_TURN : RoomUiState.PLAYING_NOT_MY_TURN;
@@ -396,8 +430,22 @@ public final class RoomScreens {
                     javafx.util.Duration.millis(420));
             afterFlip.setOnFinished(event -> {
                 if (table == resultTable && Objects.equals(gameId, resultGameId)) {
-                    resultTable.showHandResult(resultView.title(), resultView.details(), displayPot,
-                            resultView.winnerSeats(), resultView.loserSeats(), resultView.drawSeats());
+                    resultTable.showHandResult(resultView.winnerSeats(),
+                            resultView.loserSeats(), resultView.drawSeats());
+                    if (resultForSeatedPlayer) {
+                        JsonObject payouts = result.getAsJsonObject("payouts");
+                        JsonElement own = payouts == null ? null : payouts.get(Long.toString(api.userId()));
+                        if (own != null && own.getAsLong() > 0) {
+                            SoundEffects.play(SoundEffects.Sound.PAYOUT);
+                            javafx.animation.PauseTransition afterPayout = new javafx.animation.PauseTransition(
+                                    javafx.util.Duration.millis(300));
+                            afterPayout.setOnFinished(ignored -> {
+                                if (table == resultTable && Objects.equals(gameId, resultGameId))
+                                    SoundEffects.play(SoundEffects.Sound.WIN);
+                            });
+                            afterPayout.play();
+                        } else SoundEffects.play(SoundEffects.Sound.LOSE);
+                    }
                 }
             });
             afterFlip.play();
@@ -464,6 +512,9 @@ public final class RoomScreens {
     }
 
     private void renderTimer(long remainingSeconds) {
+        if (uiState == RoomUiState.PLAYING_MY_TURN && remainingSeconds > 0
+                && remainingSeconds <= 5 && remainingSeconds < turnSeconds)
+            SoundEffects.play(SoundEffects.Sound.COUNTDOWN);
         turnSeconds = Math.max(0, remainingSeconds);
         controls.updateTurnTimer(turnSeconds, 15);
         if (snapshot == null || table == null) return;
@@ -485,6 +536,9 @@ public final class RoomScreens {
         if (gameId == null || hand <= 0) return;
         boolean newHand = !gameId.equals(animatedGameId) || hand != animatedHandNumber;
         if (newHand) {
+            SoundEffects.stop(SoundEffects.Sound.WIN);
+            SoundEffects.stop(SoundEffects.Sound.LOSE);
+            SoundEffects.stop(SoundEffects.Sound.PAYOUT);
             animatedGameId = gameId;
             animatedHandNumber = hand;
             animatedBoardCount = boardCount;
@@ -497,6 +551,17 @@ public final class RoomScreens {
             int previousCount = animatedBoardCount;
             animatedBoardCount = boardCount;
             table.animateCommunityDeal(previousCount, boardCount);
+        }
+    }
+
+    private static void playActionSound(String action) {
+        switch (action) {
+            case "CHECK" -> SoundEffects.play(SoundEffects.Sound.CHECK);
+            case "CALL" -> SoundEffects.play(SoundEffects.Sound.CALL);
+            case "BET", "RAISE" -> SoundEffects.play(SoundEffects.Sound.BET_RAISE);
+            case "FOLD" -> SoundEffects.play(SoundEffects.Sound.FOLD);
+            case "ALL_IN" -> SoundEffects.play(SoundEffects.Sound.ALL_IN);
+            default -> { }
         }
     }
 

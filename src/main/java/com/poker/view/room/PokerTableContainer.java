@@ -2,6 +2,7 @@ package com.poker.view.room;
 
 import com.poker.view.AssetLoader;
 import com.poker.view.OrnateUi;
+import com.poker.view.SoundEffects;
 
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
@@ -188,7 +189,7 @@ public class PokerTableContainer extends BorderPane {
                 double targetX = target.getLayoutX() + 95 + (pass == 0 ? -12 : 12);
                 double targetY = target.getLayoutY() + (seat - 1 == heroSeatIndex ? 42 : 93);
                 sequence.getChildren().add(cardFlight(back, targetX, targetY,
-                        pass == 1 ? target::revealDealtCards : null));
+                        pass == 1 ? target::revealDealtCards : null, SoundEffects.Sound.DEAL));
             }
         }
         cardAnimation = sequence;
@@ -214,7 +215,7 @@ public class PokerTableContainer extends BorderPane {
             tableAreaNode.setCommunityCardTemporarilyHidden(slot, true);
             double centerX = 460 - 178.5 + slot * 73 + 32.5;
             sequence.getChildren().add(cardFlight(back, centerX, 303,
-                    () -> tableAreaNode.revealCommunityCardWithFlip(slot)));
+                    () -> tableAreaNode.revealCommunityCardWithFlip(slot), SoundEffects.Sound.FLIP));
         }
         cardAnimation = sequence;
         sequence.setOnFinished(event -> {
@@ -225,7 +226,8 @@ public class PokerTableContainer extends BorderPane {
         sequence.play();
     }
 
-    private SequentialTransition cardFlight(Image back, double targetX, double targetY, Runnable reveal) {
+    private SequentialTransition cardFlight(Image back, double targetX, double targetY,
+                                            Runnable reveal, SoundEffects.Sound sound) {
         ImageView flying = flyingCard(back, 460, 112);
         flying.setOpacity(0);
         cardAnimationLayer.getChildren().add(flying);
@@ -238,6 +240,7 @@ public class PokerTableContainer extends BorderPane {
         SequentialTransition flight = new SequentialTransition(appear, travel);
         flight.setOnFinished(event -> {
             cardAnimationLayer.getChildren().remove(flying);
+            SoundEffects.play(sound);
             if (reveal != null) reveal.run();
         });
         return flight;
@@ -292,11 +295,11 @@ public class PokerTableContainer extends BorderPane {
         showWinnerOverlay(winners, potAmount);
     }
 
-    /** Displays only the server's settled result; never guesses winners from visible cards. */
-    public void showHandResult(String title, String details, long potAmount,
-                               java.util.Map<Integer, Long> winnerSeats,
+    /** Marks the server's settled winners and losers without covering the table. */
+    public void showHandResult(java.util.Map<Integer, Long> winnerSeats,
                                java.util.Set<Integer> loserSeats,
                                java.util.Set<Integer> drawSeats) {
+        clearHandResult();
         for (int index = 0; index < playerNodes.size(); index++) {
             Long payout = winnerSeats.get(index + 1);
             if (payout != null && payout > 0 && drawSeats.contains(index + 1))
@@ -304,33 +307,11 @@ public class PokerTableContainer extends BorderPane {
             else if (payout != null && payout > 0) playerNodes.get(index).showWin(payout);
             else if (loserSeats.contains(index + 1)) playerNodes.get(index).showLost();
         }
+    }
+
+    public void clearHandResult() {
+        winnerResultOverlay.setVisible(false);
         winnerResultOverlay.getChildren().clear();
-        javafx.scene.control.Label titleLabel = new javafx.scene.control.Label(title);
-        titleLabel.setStyle("-fx-text-fill: #ffdf73; -fx-font-size: 32px; -fx-font-weight: 900;");
-        javafx.scene.control.Label detailsLabel = new javafx.scene.control.Label(details);
-        detailsLabel.setWrapText(true);
-        detailsLabel.setStyle("-fx-text-fill: white; -fx-font-size: 17px; -fx-font-weight: bold;");
-        javafx.scene.control.Label potLabel = new javafx.scene.control.Label(
-                "POT  $" + String.format("%,d", potAmount));
-        potLabel.setStyle("-fx-text-fill: #ffe9a1; -fx-font-size: 17px; -fx-font-weight: 900;");
-        VBox box = new VBox(7, titleLabel, detailsLabel, potLabel);
-        box.setAlignment(Pos.CENTER);
-        box.setMaxWidth(440);
-        box.setStyle(OrnateUi.compactPanelStyle() + " -fx-padding: 20 28;");
-        box.setEffect(new javafx.scene.effect.DropShadow(24, javafx.scene.paint.Color.web("#f59e0b")));
-        winnerResultOverlay.getChildren().add(box);
-        winnerResultOverlay.setVisible(true);
-        javafx.animation.ScaleTransition appear = new javafx.animation.ScaleTransition(
-                javafx.util.Duration.millis(350), box);
-        appear.setFromX(0.4);
-        appear.setFromY(0.4);
-        appear.setToX(1);
-        appear.setToY(1);
-        appear.play();
-        javafx.animation.PauseTransition dismiss = new javafx.animation.PauseTransition(
-                javafx.util.Duration.seconds(5));
-        dismiss.setOnFinished(event -> winnerResultOverlay.setVisible(false));
-        dismiss.play();
     }
 
     private void showWinnerOverlay(List<SeatViewModel> winners, int potAmount) {

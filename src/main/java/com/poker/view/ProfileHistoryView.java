@@ -234,7 +234,7 @@ public class ProfileHistoryView extends BorderPane {
         }
 
         VBox balanceSub = new VBox(2);
-        Label balHeader = new Label("TỔNG TÀI SẢN CHIPS");
+        Label balHeader = new Label("CHIPS TRONG VÍ");
         balHeader.setFont(Font.font("Arial", FontWeight.BOLD, 10));
         balHeader.setTextFill(Color.web("#eab308"));
 

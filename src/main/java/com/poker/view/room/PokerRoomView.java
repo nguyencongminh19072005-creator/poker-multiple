@@ -8,8 +8,6 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
-import javafx.scene.control.MenuButton;
-import javafx.scene.control.MenuItem;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -22,7 +20,6 @@ public final class PokerRoomView extends BorderPane {
     private final Label blinds = new Label();
     private final Label pot = new Label();
     private final Label status = new Label();
-    private final MenuButton menu = new MenuButton("⋮");
     private final Button sit = new Button("NGỒI VÀO BÀN");
     private final Button ready = new Button("SẴN SÀNG");
     private final Button start = new Button("BẮT ĐẦU VÁN");
@@ -42,11 +39,9 @@ public final class PokerRoomView extends BorderPane {
         title.setStyle(headerText);
         blinds.setStyle(headerText);
         pot.setStyle(headerText);
-        menu.setStyle("-fx-background-color:#3d2418;-fx-text-fill:#ffe19a;-fx-font-size:17px;");
-        MenuItem leaveMenu = new MenuItem("Rời phòng");
-        leaveMenu.setOnAction(event -> onLeave.run());
-        menu.getItems().add(leaveMenu);
-        HBox topBar = new HBox(20, title, blinds, pot, new Region(), menu);
+        OrnateUi.button(leave, "button-red.png", 14);
+        leave.setOnAction(event -> onLeave.run());
+        HBox topBar = new HBox(20, title, blinds, pot, new Region(), leave);
         topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setPadding(new Insets(11, 18, 11, 18));
         topBar.setStyle("-fx-background-color:linear-gradient(to right,#25160f,#58311c,#25160f);"
@@ -71,18 +66,15 @@ public final class PokerRoomView extends BorderPane {
         center.getChildren().addAll(status, tableLayer);
         setCenter(center);
 
-        for (Button button : new Button[]{sit, ready, start, leave})
-            OrnateUi.button(button, button == leave ? "button-red.png" : "button-blue.png", 14);
-        Region gap = new Region();
-        HBox.setHgrow(gap, Priority.ALWAYS);
-        waitingBar.getChildren().addAll(sit, ready, start, gap, leave);
+        for (Button button : new Button[]{sit, ready, start})
+            OrnateUi.button(button, "button-blue.png", 14);
+        waitingBar.getChildren().addAll(sit, ready, start);
         waitingBar.setAlignment(Pos.CENTER_LEFT);
         waitingBar.setPadding(new Insets(10, 18, 10, 18));
         waitingBar.setStyle("-fx-background-color:linear-gradient(to right,#25160f,#4d2a18,#25160f);"
                 + "-fx-border-color:#bc8841;-fx-border-width:2 0 0 0;");
         VBox bottom = new VBox(waitingBar, actions);
         setBottom(bottom);
-        leave.setOnAction(event -> onLeave.run());
         updateMode(RoomUiState.SPECTATING, false);
     }
 
@@ -106,8 +98,6 @@ public final class PokerRoomView extends BorderPane {
         boolean roomControls = !running;
         waitingBar.setVisible(roomControls);
         waitingBar.setManaged(roomControls);
-        menu.setVisible(running);
-        menu.setManaged(running);
         if (running && state == RoomUiState.SPECTATING) {
             actions.setVisible(false);
             actions.setManaged(false);

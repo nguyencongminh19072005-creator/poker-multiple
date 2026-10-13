@@ -188,7 +188,7 @@ public final class PokerWebSocketServer extends WebSocketServer {
         reply.add("body", exchange.response() == null ? new JsonObject() : exchange.response());
         socket.send(reply.toString());
         if (exchange.status() >= 200 && exchange.status() < 300) {
-            afterSuccess(socket, connection, method, exchange.getRequestURI().getPath(), exchange.response());
+            afterSuccess(socket, connection, method, exchange.getRequestURI().getPath(), body, exchange.response());
         }
     }
 
@@ -200,7 +200,7 @@ public final class PokerWebSocketServer extends WebSocketServer {
                     Map.of("status", healthy ? "UP" : "DOWN", "database", healthy ? "UP" : "DOWN"));
         } else if (path.startsWith("/api/v1/auth/")) {
             auth.handle(exchange);
-        } else if (path.equals("/api/v1/me")) {
+        } else if (path.equals("/api/v1/me") || path.equals("/api/v1/me/history")) {
             profile.handle(exchange);
         } else if (path.startsWith("/api/v1/rooms")) {
             rooms.handle(exchange);
@@ -220,7 +220,7 @@ public final class PokerWebSocketServer extends WebSocketServer {
     }
 
     private void afterSuccess(WebSocket socket, ConnectionManager.Session connection, String method,
-                              String path, com.google.gson.JsonElement response) {
+                              String path, JsonObject requestBody, com.google.gson.JsonElement response) {
         if ("POST".equals(method) && (path.endsWith("/login") || path.endsWith("/refresh"))
                 && response != null && response.isJsonObject()) {
             JsonObject data = response.getAsJsonObject();
@@ -263,7 +263,19 @@ public final class PokerWebSocketServer extends WebSocketServer {
                 }
                 if (path.startsWith("/app/game/") || path.matches("/api/v1/games/[0-9a-fA-F-]+/leave")) {
                     int gamePart = path.startsWith("/app/game/") ? 3 : 4;
-                    if (parts.length > gamePart) broadcastEvent("/topic/game/" + parts[gamePart]);
+                    if (parts.length > gamePart) {
+                        String destination = "/topic/game/" + parts[gamePart];
+                        if (action && connection.userId != null) {
+                            JsonObject payload = new JsonObject();
+                            payload.addProperty("actorUserId", connection.userId);
+                            payload.addProperty("actionType", value(requestBody, "actionType"));
+                            JsonObject event = new JsonObject();
+                            event.addProperty("type", "ACTION_APPLIED");
+                            event.add("payload", payload);
+                            broadcastEvent(destination, event);
+                        }
+                        broadcastEvent(destination);
+                    }
                 } else if (response != null && response.isJsonObject()) {
                     if (data.has("gameId")) broadcastEvent("/topic/game/" + value(data, "gameId"));
                 }
@@ -302,10 +314,17 @@ public final class PokerWebSocketServer extends WebSocketServer {
     private void broadcastTurnTicks() {
         try {
             for (GameOperations.TurnTick tick : gameController.tickTurns()) {
+                if (tick.cancelled()) {
+                    JsonObject event = new JsonObject();
+                    event.addProperty("type", "NEXT_HAND_CANCELLED");
+                    broadcastEvent("/topic/room/" + tick.roomId(), event);
+                    broadcastEvent("/topic/lobby");
+                    continue;
+                }
                 String destination = "/topic/game/" + tick.gameId();
                 if (tick.stateChanged()) {
                     broadcastEvent(destination);
-                    if (tick.finished()) {
+                    if (tick.finished() || tick.started()) {
                         broadcastEvent("/topic/room/" + tick.roomId());
                         broadcastEvent("/topic/lobby");
                     }

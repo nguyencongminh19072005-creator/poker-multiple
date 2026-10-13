@@ -30,9 +30,11 @@ Server đẩy thông báo thay đổi, sau đó client tải snapshot mới qua 
 {"type":"event","destination":"/topic/lobby","body":{}}
 ```
 
-Các kênh hiện dùng: `/topic/lobby`, `/topic/room/{id}`, `/topic/game/{id}`, `/user/queue/notifications`. Sự kiện chỉ báo có thay đổi, không mang bài riêng hoặc dữ liệu tài khoản. Client lấy snapshot riêng sau thông báo. Trong lúc chơi, lá bài tẩy chỉ có trong phản hồi gửi cho chính người chơi. Khi server đã chia pot và phase là `FINISHED`, `publicState.players[].showdownCards` chứa bài của mọi người đã tham gia ván, kể cả người đã fold, để tất cả client cùng xem; trước đó trường này là danh sách rỗng.
+Các kênh hiện dùng: `/topic/lobby`, `/topic/room/{id}`, `/topic/game/{id}`, `/user/queue/notifications`. Sự kiện không mang bài riêng hoặc dữ liệu tài khoản. Client lấy snapshot riêng sau thông báo trạng thái đã đổi. Trong lúc chơi, lá bài tẩy chỉ có trong phản hồi gửi cho chính người chơi. Khi server đã chia pot và phase là `FINISHED`, `publicState.players[].showdownCards` chứa bài của mọi người đã tham gia ván, kể cả người đã fold, để tất cả client cùng xem; trước đó trường này là danh sách rỗng.
 
 Sau `POST /api/v1/rooms/{roomId}/chat/messages`, server gửi sự kiện `{"type":"event","destination":"/topic/room/{roomId}","body":{"type":"CHAT_CHANGED"}}`. Client trong phòng chỉ tải lại lịch sử chat qua lệnh có kiểm tra quyền thành viên; sự kiện không chứa nội dung của phòng riêng và không bắt client tải lại toàn bộ trạng thái game.
+
+Sau một lệnh `POST /app/game/{gameId}/action` thành công, server gửi `ACTION_APPLIED` trên `/topic/game/{gameId}` với `payload.actorUserId` và `payload.actionType`, rồi gửi thông báo trạng thái đã đổi. Client dùng sự kiện hành động để phát hiệu ứng âm thanh; dữ liệu bài riêng vẫn chỉ nằm trong snapshot của từng người chơi.
 
 Snapshot sau khi chia pot có thêm `result` gồm `totalPot` (pot tranh chấp của ván vừa xong), `payouts` (tiền thắng theo user ID, không tính tiền cược không được call trả lại), `tiedWinnerUserIds` và `foldOnly`. Trước khi chia pot, `result` là `null`. Các trường và đường dẫn lệnh cũ không đổi; client dùng kết quả từ server để hiện THẮNG/THUA/HÒA, không tự tính từ bài trên màn hình.
 

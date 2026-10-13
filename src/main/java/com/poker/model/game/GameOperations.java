@@ -40,6 +40,11 @@ public final class GameOperations {
     private final RoomOperations rooms;
     private final ConcurrentMap<UUID, RunningHand> byId = new ConcurrentHashMap<>();
     private final ConcurrentMap<Long, UUID> byRoom = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, UUID> lastFinishedByRoom = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, Long> nextHandAtNanos = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, Integer> lastDealerSeat = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, Long> handCounts = new ConcurrentHashMap<>();
+    private final Set<Long> disconnectedUsers = ConcurrentHashMap.newKeySet();
     private final ConcurrentMap<Long, Object> roomLocks = new ConcurrentHashMap<>();
 
     public GameOperations(JdbcDatabase database) {
@@ -51,23 +56,31 @@ public final class GameOperations {
 
     public UUID start(long roomId, long hostId) throws SQLException {
         synchronized (lockFor(roomId)) {
-            if (byRoom.containsKey(roomId)) throw new IllegalArgumentException("Phòng đang có ván bài");
-            UUID gameId = UUID.randomUUID();
-            GameSessionDao.StartData data = sessions.start(roomId, gameId, row -> validateStart(row, hostId));
-            try {
-                Set<Long> members = ConcurrentHashMap.newKeySet();
-                rooms.members(roomId).forEach(member -> members.add(member.userId()));
-                RunningHand hand = createHand(gameId, data, members);
-                byId.put(gameId, hand);
-                byRoom.put(roomId, gameId);
-                hand.settleIfComplete();
-                return gameId;
-            } catch (RuntimeException | SQLException failure) {
-                sessions.abort(gameId, roomId);
-                byId.remove(gameId);
-                byRoom.remove(roomId);
-                throw failure;
-            }
+            if (nextHandAtNanos.containsKey(roomId))
+                throw new IllegalArgumentException("Ván tiếp theo sẽ tự bắt đầu sau 5 giây");
+            return startHand(roomId, data -> validateStart(data, hostId));
+        }
+    }
+
+    private UUID startHand(long roomId, GameSessionDao.StartValidator validator) throws SQLException {
+        if (byRoom.containsKey(roomId)) throw new IllegalArgumentException("Phòng đang có ván bài");
+        UUID gameId = UUID.randomUUID();
+        GameSessionDao.StartData data = sessions.start(roomId, gameId, validator);
+        try {
+            Set<Long> members = ConcurrentHashMap.newKeySet();
+            rooms.members(roomId).forEach(member -> members.add(member.userId()));
+            RunningHand hand = createHand(gameId, data, members);
+            byId.put(gameId, hand);
+            byRoom.put(roomId, gameId);
+            hand.settleIfComplete();
+            lastDealerSeat.put(roomId, hand.state.dealerPosition());
+            handCounts.put(roomId, hand.handNumber);
+            return gameId;
+        } catch (RuntimeException | SQLException failure) {
+            sessions.abort(gameId, roomId);
+            byId.remove(gameId);
+            byRoom.remove(roomId);
+            throw failure;
         }
     }
 
@@ -87,7 +100,8 @@ public final class GameOperations {
     public long roomForGame(UUID gameId) { return requireHand(gameId).roomId; }
 
     public record TurnTick(UUID gameId, long roomId, UUID turnId,
-                           long remainingSeconds, boolean stateChanged, boolean finished) { }
+                           long remainingSeconds, boolean stateChanged, boolean finished,
+                           boolean started, boolean cancelled) { }
 
     /** Advance expired turns on the server; the client timer is display-only. */
     public List<TurnTick> tickTurns() throws SQLException {
@@ -116,7 +130,27 @@ public final class GameOperations {
                         TimeUnit.NANOSECONDS.toSeconds(Math.max(0,
                                 hand.turnDeadlineNanos - System.nanoTime()) + 999_999_999L));
                 ticks.add(new TurnTick(hand.state.gameId(), hand.roomId, turnId,
-                        remaining, changed, !hand.active));
+                        remaining, changed, !hand.active, false, false));
+            }
+        }
+        for (var pending : nextHandAtNanos.entrySet()) {
+            long roomId = pending.getKey();
+            synchronized (lockFor(roomId)) {
+                if (!pending.getValue().equals(nextHandAtNanos.get(roomId))
+                        || System.nanoTime() - pending.getValue() < 0) continue;
+                if (byRoom.containsKey(roomId)) continue;
+                try {
+                    nextHandAtNanos.remove(roomId);
+                    UUID nextId = startHand(roomId, this::validateAutomaticStart);
+                    ticks.add(new TurnTick(nextId, roomId, null, 0, true, false, true, false));
+                } catch (IllegalArgumentException noLongerReady) {
+                    // Someone left, lost their seat, or ran out of chips during the pause.
+                    ticks.add(new TurnTick(lastFinishedByRoom.get(roomId), roomId,
+                            null, 0, false, false, false, true));
+                } catch (SQLException temporaryFailure) {
+                    nextHandAtNanos.put(roomId, System.nanoTime() + TimeUnit.SECONDS.toNanos(1));
+                    throw temporaryFailure;
+                }
             }
         }
         return ticks;
@@ -162,6 +196,7 @@ public final class GameOperations {
     }
 
     public void disconnectUser(long userId) throws SQLException {
+        disconnectedUsers.add(userId);
         for (RunningHand hand : byId.values()) {
             synchronized (lockFor(hand.roomId)) {
                 if (!hand.active) continue;
@@ -175,6 +210,7 @@ public final class GameOperations {
     }
 
     public void reconnectUser(long userId) throws SQLException {
+        disconnectedUsers.remove(userId);
         for (RunningHand hand : byId.values()) {
             synchronized (lockFor(hand.roomId)) {
                 if (!hand.active) continue;
@@ -191,6 +227,13 @@ public final class GameOperations {
             throw new IllegalArgumentException("Bạn chưa vào phòng này");
         }
         synchronized (lockFor(hand.roomId)) {
+            if (!hand.active) {
+                UUID currentId = byRoom.get(hand.roomId);
+                if (currentId != null && !currentId.equals(gameId)) {
+                    leave(currentId, userId);
+                    return;
+                }
+            }
             PokerPlayer player = hand.state.players().stream()
                     .filter(item -> item.userId() == userId).findFirst().orElse(null);
             if (player == null || !hand.active) {
@@ -258,13 +301,29 @@ public final class GameOperations {
         }
     }
 
+    private void validateAutomaticStart(GameSessionDao.StartData data) {
+        if (!"WAITING".equals(data.status()) || data.seats().size() < 2
+                || data.seats().stream().anyMatch(seat -> seat.chips() <= 0
+                        || disconnectedUsers.contains(seat.userId()))) {
+            throw new IllegalArgumentException("Không đủ người hoặc chip để bắt đầu ván tiếp theo");
+        }
+    }
+
     private RunningHand createHand(UUID id, GameSessionDao.StartData data, Set<Long> members) {
         Deck deck = new Deck();
         deck.shuffle();
         List<GameSessionDao.Seat> seats = data.seats();
-        int dealer = seats.getFirst().number();
-        int small = seats.size() == 2 ? dealer : seats.get(1).number();
-        int big = seats.size() == 2 ? seats.get(1).number() : seats.get(2).number();
+        int previousDealer = lastDealerSeat.getOrDefault(data.roomId(), 0);
+        int dealerIndex = 0;
+        if (previousDealer != 0) {
+            while (dealerIndex < seats.size() && seats.get(dealerIndex).number() <= previousDealer)
+                dealerIndex++;
+            if (dealerIndex == seats.size()) dealerIndex = 0;
+        }
+        int dealer = seats.get(dealerIndex).number();
+        int small = seats.size() == 2 ? dealer
+                : seats.get((dealerIndex + 1) % seats.size()).number();
+        int big = seats.get((dealerIndex + (seats.size() == 2 ? 1 : 2)) % seats.size()).number();
         List<PokerPlayer> players = new ArrayList<>();
         Map<Long, String> names = new HashMap<>();
         for (GameSessionDao.Seat seat : seats) {
@@ -284,7 +343,11 @@ public final class GameOperations {
                 Duration.ofSeconds(15), 0, null, data.bigBlind());
         PokerRoundEngine engine = new PokerRoundEngine();
         BettingRoundState round = engine.start(state, deck);
-        return new RunningHand(data.roomId(), state, deck, engine, round, names, members);
+        long handNumber = handCounts.getOrDefault(data.roomId(), 0L) + 1;
+        Map<Long, Long> startingChips = new HashMap<>();
+        seats.forEach(seat -> startingChips.put(seat.userId(), seat.chips()));
+        return new RunningHand(data.roomId(), handNumber, state, deck, engine, round,
+                names, members, startingChips);
     }
 
     public record PublicPlayer(int seat, long userId, String username, long tableChips,
@@ -321,12 +384,14 @@ public final class GameOperations {
 
     private final class RunningHand {
         final long roomId;
+        final long handNumber;
         final GameState state;
         final Deck deck;
         final PokerRoundEngine engine;
         final BettingRoundState round;
         final Map<Long, String> names;
         final Set<Long> members;
+        final Map<Long, Long> startingChips;
         final Map<Long, String> lastAction = new HashMap<>();
         final Set<Long> leaving = new HashSet<>();
         final Set<String> acceptedActions = new HashSet<>();
@@ -335,15 +400,18 @@ public final class GameOperations {
         long turnDeadlineNanos;
         HandResult result;
 
-        RunningHand(long roomId, GameState state, Deck deck, PokerRoundEngine engine,
-                    BettingRoundState round, Map<Long, String> names, Set<Long> members) {
+        RunningHand(long roomId, long handNumber, GameState state, Deck deck, PokerRoundEngine engine,
+                    BettingRoundState round, Map<Long, String> names, Set<Long> members,
+                    Map<Long, Long> startingChips) {
             this.roomId = roomId;
+            this.handNumber = handNumber;
             this.state = state;
             this.deck = deck;
             this.engine = engine;
             this.round = round;
             this.names = names;
             this.members = members;
+            this.startingChips = Map.copyOf(startingChips);
             syncTurnDeadline();
         }
 
@@ -371,7 +439,7 @@ public final class GameOperations {
                     state.turnId() == null ? "" : state.turnId().toString());
             return new Snapshot(new PublicState(state.communityCards(), players,
                     state.phase().name(), state.currentTurnUserId(), state.dealerPosition(),
-                    state.smallBlindPosition(), state.bigBlindPosition(), 1), mine, turn, result);
+                    state.smallBlindPosition(), state.bigBlindPosition(), handNumber), mine, turn, result);
         }
 
         void settleIfComplete() throws SQLException {
@@ -384,10 +452,14 @@ public final class GameOperations {
             }
             Map<Long, Long> chips = new HashMap<>();
             state.players().forEach(player -> chips.put(player.userId(), player.tableChips()));
-            sessions.finish(state.gameId(), roomId, chips);
+            sessions.finish(state.gameId(), roomId, startingChips, chips,
+                    result == null ? Map.of() : result.payouts());
             active = false;
             byRoom.remove(roomId);
             for (long userId : leaving) rooms.leave(roomId, userId);
+            UUID olderFinishedId = lastFinishedByRoom.put(roomId, state.gameId());
+            if (olderFinishedId != null) byId.remove(olderFinishedId);
+            nextHandAtNanos.put(roomId, System.nanoTime() + TimeUnit.SECONDS.toNanos(5));
         }
 
         void automateDisconnectedTurns() {
