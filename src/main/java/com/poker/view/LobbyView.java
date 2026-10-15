@@ -79,17 +79,21 @@ public class LobbyView extends BorderPane {
         int avatarIndex = (Math.abs(currentUsername.hashCode()) % 6) + 1;
         Image rawAvatarImg = AssetLoader.getAvatarImage("avatar_player_" + avatarIndex + ".png");
 
+        // The portrait opening in the 250x90 player-seat artwork is centered at x=49.
+        // Keep the avatar box fixed so its center stays on that opening when the bar resizes.
         StackPane avatarStack = new StackPane();
-        avatarStack.setPrefSize(72, 72);
+        avatarStack.setMinSize(66, 66);
+        avatarStack.setPrefSize(66, 66);
+        avatarStack.setMaxSize(66, 66);
 
         if (rawAvatarImg != null) {
             javafx.scene.image.ImageView avatarView = new javafx.scene.image.ImageView(rawAvatarImg);
-            avatarView.setFitWidth(50);
-            avatarView.setFitHeight(50);
+            avatarView.setFitWidth(66);
+            avatarView.setFitHeight(66);
             avatarView.setPreserveRatio(true);
 
             // Circular clip for avatar
-            javafx.scene.shape.Circle clip = new javafx.scene.shape.Circle(25, 25, 25);
+            javafx.scene.shape.Circle clip = new javafx.scene.shape.Circle(33, 33, 33);
             avatarView.setClip(clip);
 
             avatarStack.getChildren().add(avatarView);
@@ -117,7 +121,7 @@ public class LobbyView extends BorderPane {
 
         userDetailBox.getChildren().addAll(nameLabel, statusLabel);
 
-        HBox profileSection = new HBox(12, avatarStack, userDetailBox);
+        HBox profileSection = new HBox(18, avatarStack, userDetailBox);
         profileSection.setAlignment(Pos.CENTER_LEFT);
         profileSection.setCursor(javafx.scene.Cursor.HAND);
         profileSection.setPadding(new Insets(7, 12, 7, 16));
@@ -258,7 +262,7 @@ public class LobbyView extends BorderPane {
         roomsHeading.setMaxWidth(Double.MAX_VALUE);
         roomsHeading.setPrefHeight(32);
         roomsHeading.setAlignment(Pos.CENTER);
-        roomsHeading.setStyle("-fx-text-fill: #f2d391; -fx-font-family: Georgia; -fx-font-size: 17px; -fx-font-weight: 900;");
+        roomsHeading.setStyle("-fx-text-fill: #f2d391; -fx-font-family: 'Segoe UI'; -fx-font-size: 17px; -fx-font-weight: 900;");
         VBox roomPanel = new VBox(10, roomsHeading, roomCards);
         roomPanel.setPrefWidth(650);
         roomPanel.setPadding(new Insets(17, 30, 26, 30));

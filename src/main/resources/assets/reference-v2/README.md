@@ -14,9 +14,12 @@ Nguồn tham khảo: `C:\Users\Admin\Downloads\poker_custom_assets_v2.zip`. ZIP 
 | `chips/` | 6 chip 1, 5, 25, 100, 500, 1000 | Ảnh độ phân giải cao tạo theo phong cách ảnh mẫu |
 | `avatars/` | 6 avatar người chơi | Ảnh độ phân giải cao tạo theo phong cách ảnh mẫu |
 | `dealer/female-dealer.png` | Nhân vật nữ chia bài, PNG nền trong suốt, đứng ở giữa phía trên bàn | Tạo mới bằng công cụ imagegen tích hợp theo phong cách giao diện casino cổ điển |
+| `dealer/female-dealer-seated.png` | Phương án nhân vật ngồi đã lưu, hiện không được giao diện sử dụng | Ảnh PNG nền trong suốt |
+| `dealer/female-dealer-idle.gif` | 24 khung hình lặp 2,4 giây: nhân vật đứng nguyên chỗ, thở/lắc rất nhẹ, nền trong suốt | Tạo từ PNG gốc bằng `tools/GenerateDealerIdleGif.java`; giao diện ưu tiên GIF và dùng PNG nếu GIF thiếu |
 | `backgrounds/` | Nền casino cổ điển | Ảnh tạo theo phong cách ảnh mẫu |
 | `cards/` | Bộ bài poker | Giữ bộ đã có trong dự án theo yêu cầu |
-| `table/poker-table-v2.png` | Bàn nỉ xanh, viền da đỏ và vàng đang dùng trong game | Tạo lại từ ảnh màn chơi mẫu bằng công cụ tạo/chỉnh ảnh; vùng ngoài bàn trong suốt |
+| `table/poker-table-notched.png` | Bàn đang dùng: mép trên lõm nhẹ cho dealer, giữ nỉ xanh và viền da đỏ-vàng; nền ngoài trong suốt | Chỉnh từ bàn gốc bằng imagegen tích hợp; ảnh thứ hai của người dùng chỉ tham chiếu dáng |
+| `table/poker-table-v2.png` | Bàn gốc; được dùng nếu không tải được ảnh bàn mới | Tạo lại từ ảnh màn chơi mẫu bằng công cụ tạo/chỉnh ảnh; vùng ngoài bàn trong suốt |
 | `table/poker-table.png` | Bàn cũ | Giữ để đối chiếu, không còn dùng trong màn chơi |
 | `screens/` | 10 ảnh gốc từ ZIP | Chỉ để tham khảo, không đưa nguyên ảnh vào màn hình game |
 
@@ -30,8 +33,8 @@ Tổng: **37 PNG UI tách rời** trong `pack/`, thêm chip, avatar, nền, bài
 | `02_create_room.png` | `frames/settings-panel.png`, `buttons/red.png`, `icons/lock.png`, `icons/users.png`, bài |
 | `03_join_private_room.png` | `frames/modal-cream.png`, `icons/lock.png`, `buttons/blue.png` |
 | `04_waiting_room.png` | `frames/player-seat.png`, `frames/chat-panel.png`, `buttons/green.png`, `buttons/red.png`, `icons/crown.png`, avatar |
-| `05_poker_game_room.png` | `table/poker-table-v2.png`, bài, đủ 6 chip, avatar, `frames/player-seat.png`, `markers/`, `buttons/` |
-| Giao diện bàn chơi hiện tại | `dealer/female-dealer.png` là lớp trang trí, không phải ghế; các ghế được xoay theo góc nhìn từng người chơi |
+| `05_poker_game_room.png` | `table/poker-table-notched.png`, bài, đủ 6 chip, avatar, `frames/player-seat.png`, `markers/`, `buttons/` |
+| Giao diện bàn chơi hiện tại | `dealer/female-dealer-idle.gif` là lớp trang trí, không phải ghế; các ghế được xoay theo góc nhìn từng người chơi |
 | `06_room_chat.png` | `frames/chat-panel.png`, `frames/chat-input.png`, `buttons/red.png`, `icons/chat.png`, `icons/send.png`, avatar |
 | `07_spectator_view.png` | Bàn, bài úp, `icons/eye.png`, `frames/player-seat.png` |
 | `08_room_detail_preview.png` | `frames/modal-dark.png`, `frames/settings-panel.png`, chip |

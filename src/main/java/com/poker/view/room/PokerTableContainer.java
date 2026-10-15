@@ -102,9 +102,10 @@ public class PokerTableContainer extends BorderPane {
         scaledBoard.setScaleX(scale);
         scaledBoard.setScaleY(scale);
         scaledBoard.setLayoutX((width - BOARD_WIDTH) / 2);
-        // Use a little of the available vertical slack for the dealer above the rail.
+        // Keep the table visually centered, with a small upward bias when space
+        // permits. Do not push it above the viewport in shorter windows.
         double verticalSlack = Math.max(0, height - BOARD_HEIGHT);
-        scaledBoard.setLayoutY((height - BOARD_HEIGHT) / 2 + Math.min(25, verticalSlack / 2));
+        scaledBoard.setLayoutY((height - BOARD_HEIGHT) / 2 - Math.min(22, verticalSlack / 4));
     }
 
     private void buildLayout() {
@@ -127,7 +128,7 @@ public class PokerTableContainer extends BorderPane {
             dealerView.setFitWidth(100);
             dealerView.setPreserveRatio(true);
             dealerView.setLayoutX((BOARD_WIDTH - 100) / 2);
-            dealerView.setLayoutY(-82); // Feet meet the outer upper rail, not the felt.
+            dealerView.setLayoutY(-42); // Feet meet the recessed upper rail, not the felt.
             dealerView.setMouseTransparent(true);
             board.getChildren().add(dealerView);
         }
