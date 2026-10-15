@@ -58,7 +58,7 @@ public class TableAreaNode extends StackPane {
         Image tableImg = AssetLoader.getTableImage();
         if (tableImg != null) {
             tableImageView.setImage(tableImg);
-            tableImageView.setFitWidth(860);
+            tableImageView.setFitWidth(900);
             tableImageView.setFitHeight(575);
             tableImageView.setPreserveRatio(true);
             tableImageView.setEffect(new DropShadow(30, Color.rgb(0, 0, 0, 0.95)));
