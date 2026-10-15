@@ -204,6 +204,9 @@ public final class PokerWebSocketServer extends WebSocketServer {
             profile.handle(exchange);
         } else if (path.startsWith("/api/v1/rooms")) {
             rooms.handle(exchange);
+        } else if ("PATCH".equals(method) && "/api/v1/me".equals(path)) {
+            broadcastEvent("/topic/lobby");
+            connections.broadcastSubscribedStateTopics();
         } else if (path.startsWith("/api/v1/games/") || path.startsWith("/app/game/")) {
             games.handle(exchange);
         } else if (path.startsWith("/api/v1/friends") || path.startsWith("/api/v1/friend-requests")) {

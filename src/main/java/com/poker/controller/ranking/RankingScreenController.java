@@ -35,8 +35,9 @@ public final class RankingScreenController {
             for (JsonElement item : data.getAsJsonArray("items")) {
                 JsonObject row = item.getAsJsonObject();
                 entries.add(new LeaderboardView.RankingEntry(ClientJson.number(row, "rank"),
-                        ClientJson.string(row, "username"), ClientJson.number(row, "rating"),
-                        ClientJson.number(row, "gamesRated")));
+                        ClientJson.number(row, "userId"), ClientJson.string(row, "username"),
+                        ClientJson.number(row, "chipsEarned"), ClientJson.number(row, "gamesRated"),
+                        ClientJson.string(row, "avatarUrl")));
             }
             view.showOnlineEntries(entries);
         })).exceptionally(failure -> { Platform.runLater(() -> error.accept(ClientJson.cause(failure))); return null; });

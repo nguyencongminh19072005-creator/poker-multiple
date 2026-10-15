@@ -31,16 +31,29 @@ public class LobbyView extends BorderPane {
 
     private final LobbyActions actions;
     private final String currentUsername;
+    private final String avatarUrl;
+    private final boolean adminUser;
     private final boolean onlineMode;
     private Label balanceLabel;
     private Label onlineValue;
 
     public LobbyView(String username, LobbyActions actions) {
-        this(username, actions, false);
+        this(username, actions, false, null);
     }
 
     public LobbyView(String username, LobbyActions actions, boolean onlineMode) {
+        this(username, actions, onlineMode, null);
+    }
+
+    public LobbyView(String username, LobbyActions actions, boolean onlineMode, String avatarUrl) {
+        this(username, actions, onlineMode, avatarUrl, "admin".equalsIgnoreCase(username));
+    }
+
+    public LobbyView(String username, LobbyActions actions, boolean onlineMode,
+                     String avatarUrl, boolean adminUser) {
         this.currentUsername = username;
+        this.avatarUrl = avatarUrl;
+        this.adminUser = adminUser;
         this.actions = actions;
         this.onlineMode = onlineMode;
 
@@ -76,25 +89,24 @@ public class LobbyView extends BorderPane {
                 "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.62), 12, 0, 0, 4);");
 
         // --- Top-Left: Player Profile Avatar with Gold Frame Asset ---
-        int avatarIndex = (Math.abs(currentUsername.hashCode()) % 6) + 1;
-        Image rawAvatarImg = AssetLoader.getAvatarImage("avatar_player_" + avatarIndex + ".png");
+        String avatarFile = avatarUrl != null && avatarUrl.matches("avatar_player_[1-6]\\.png")
+                ? avatarUrl : "avatar_player_" + (Math.floorMod(currentUsername.hashCode(), 6) + 1) + ".png";
+        Image rawAvatarImg = AssetLoader.getAvatarImage(avatarFile);
 
         // The portrait opening in the 250x90 player-seat artwork is centered at x=49.
         // Keep the avatar box fixed so its center stays on that opening when the bar resizes.
         StackPane avatarStack = new StackPane();
-        avatarStack.setMinSize(66, 66);
-        avatarStack.setPrefSize(66, 66);
-        avatarStack.setMaxSize(66, 66);
+        avatarStack.setMinSize(70, 70);
+        avatarStack.setPrefSize(70, 70);
+        avatarStack.setMaxSize(70, 70);
+        avatarStack.setTranslateX(2);
+        avatarStack.setTranslateY(-2);
 
         if (rawAvatarImg != null) {
             javafx.scene.image.ImageView avatarView = new javafx.scene.image.ImageView(rawAvatarImg);
-            avatarView.setFitWidth(66);
-            avatarView.setFitHeight(66);
-            avatarView.setPreserveRatio(true);
-
-            // Circular clip for avatar
-            javafx.scene.shape.Circle clip = new javafx.scene.shape.Circle(33, 33, 33);
-            avatarView.setClip(clip);
+            avatarView.setFitWidth(70);
+            avatarView.setFitHeight(70);
+            avatarView.setPreserveRatio(false);
 
             avatarStack.getChildren().add(avatarView);
         }
@@ -121,10 +133,10 @@ public class LobbyView extends BorderPane {
 
         userDetailBox.getChildren().addAll(nameLabel, statusLabel);
 
-        HBox profileSection = new HBox(18, avatarStack, userDetailBox);
+        HBox profileSection = new HBox(12, avatarStack, userDetailBox);
         profileSection.setAlignment(Pos.CENTER_LEFT);
         profileSection.setCursor(javafx.scene.Cursor.HAND);
-        profileSection.setPadding(new Insets(7, 12, 7, 16));
+        profileSection.setPadding(new Insets(7, 12, 7, 15));
         profileSection.setPrefSize(250, 90);
         profileSection.setMinSize(250, 90);
         profileSection.setStyle(OrnateUi.imageStyle("player-seat.png"));
@@ -192,7 +204,7 @@ public class LobbyView extends BorderPane {
         btnAdmin.setPrefSize(110, 44);
         OrnateUi.button(btnAdmin, "button-red.png", 13);
         btnAdmin.setOnAction(e -> actions.onOpenAdmin());
-        if (!"admin".equalsIgnoreCase(currentUsername)) {
+        if (!adminUser) {
             btnAdmin.setVisible(false);
             btnAdmin.setManaged(false);
         }

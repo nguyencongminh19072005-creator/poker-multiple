@@ -2,256 +2,178 @@ package com.poker.view;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.image.Image;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.OverrunStyle;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
+import java.util.List;
+
+/** Bảng xếp hạng chung, hiển thị dữ liệu thật từ server. */
 public class LeaderboardView extends BorderPane {
-    private HBox podiumRow;
-    private VBox ranksList;
-    private final boolean onlineMode;
+    public record RankingEntry(long rank, long userId, String name, long chipsEarned,
+                               long gamesRated, String avatarUrl) { }
+    public interface LeaderboardActions { void onBackToLobby(); }
 
-    public record RankingEntry(long rank, String name, long rating, long gamesRated) { }
+    private final StackPane podium = new StackPane();
+    private final VBox rows = new VBox(8);
+    private final Label count = label("Đang tải...", 13, "#aeb8ca");
 
-    public interface LeaderboardActions {
-        void onBackToLobby();
-    }
-
-    public LeaderboardView(LeaderboardActions actions) {
-        this(actions, false);
-    }
+    public LeaderboardView(LeaderboardActions actions) { this(actions, false); }
 
     public LeaderboardView(LeaderboardActions actions, boolean onlineMode) {
-        this.onlineMode = onlineMode;
-        // Background
-        Image bgImg = AssetLoader.getLobbyBackgroundImage();
-        if (bgImg != null) {
-            BackgroundImage myBI = new BackgroundImage(bgImg,
-                    BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.CENTER,
-                    new BackgroundSize(100, 100, true, true, true, true));
-            this.setBackground(new Background(myBI));
-        } else {
-            this.setStyle("-fx-background-color: #07090e;");
-        }
+        var background = AssetLoader.getLobbyBackgroundImage();
+        if (background != null) setBackground(new Background(new BackgroundImage(background,
+                BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.CENTER,
+                new BackgroundSize(100, 100, true, true, true, true))));
+        else setStyle("-fx-background-color: #090c14;");
 
-        // Top Header
-        HBox topBar = new HBox(20);
-        topBar.setPadding(new Insets(14, 35, 14, 35));
-        topBar.setAlignment(Pos.CENTER_LEFT);
-        topBar.setStyle("-fx-background-color: linear-gradient(to bottom, #5a3023, #281710); " +
-                "-fx-border-color: #c69a55; -fx-border-width: 0 0 2 0;");
+        VBox panel = new VBox(16);
+        panel.setAlignment(Pos.TOP_CENTER);
+        panel.setPadding(new Insets(26, 32, 30, 32));
+        panel.setMaxWidth(1080);
+        panel.setStyle("-fx-background-color: #222630; -fx-background-radius: 28; "
+                + "-fx-border-color: #626c80; -fx-border-radius: 28; -fx-border-width: 2; "
+                + "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 26, 0.25, 0, 10);");
 
-        Button btnBack = new Button("◄ Quay lại Sảnh");
-        btnBack.setFont(Font.font("Segoe UI", FontWeight.BOLD, 13));
-        btnBack.setPrefSize(165, 46);
-        OrnateUi.button(btnBack, "button-red.png", 13);
-        btnBack.setOnAction(e -> actions.onBackToLobby());
+        StackPane heading = new StackPane();
+        heading.setMinHeight(48);
+        Button back = new Button("← VỀ SẢNH");
+        back.setOnAction(event -> actions.onBackToLobby());
+        back.setStyle("-fx-background-color: #383e4e; -fx-text-fill: white; -fx-font-weight: bold; "
+                + "-fx-background-radius: 20; -fx-padding: 10 18; -fx-cursor: hand;");
+        Label title = label("XẾP HẠNG TOÀN HỆ THỐNG", 25, "#f5f6fb");
+        heading.getChildren().addAll(title, back);
+        StackPane.setAlignment(title, Pos.CENTER);
+        StackPane.setAlignment(back, Pos.CENTER_LEFT);
 
-        Label title = new Label("🏆 BẢNG XẾP HẠNG POKER THẾ GIỚI 🏆");
-        title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 22));
-        title.setTextFill(Color.web("#facc15"));
-        title.setStyle("-fx-effect: dropshadow(one-pass-box, rgba(0,0,0,0.9), 6, 0.8, 0, 2);");
-
-        topBar.getChildren().addAll(btnBack, title);
-        this.setTop(topBar);
-
-        // Center Content
-        VBox container = new VBox(25);
-        container.setPadding(new Insets(20, 40, 30, 40));
-        container.setAlignment(Pos.TOP_CENTER);
-
-        HBox filterBox = new HBox(15);
-        filterBox.setAlignment(Pos.CENTER);
-
-        Label lblSort = new Label("Lọc theo:");
-        lblSort.setTextFill(Color.WHITE);
-        lblSort.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-
-        ComboBox<String> sortCombo = new ComboBox<>();
-        sortCombo.getItems().addAll("Ranking Points", "Total Wins", "Total Chips", "Win Rate %");
-        sortCombo.setValue("Ranking Points");
-        if (onlineMode) sortCombo.setDisable(true);
-        sortCombo.setStyle("-fx-background-color: #3b271c; -fx-text-fill: #f4dfb6; -fx-font-size: 13px; " +
-                "-fx-border-color: #b58b50; -fx-border-radius: 7; -fx-background-radius: 7;");
-
-        filterBox.getChildren().addAll(lblSort, sortCombo);
-
-        // --- TOP 3 PODIUM CROWNS ROW ---
-        podiumRow = new HBox(25);
-        podiumRow.setAlignment(Pos.BOTTOM_CENTER);
-
-        if (!onlineMode) {
-            VBox cardRank2 = createPodiumCard("🥈 #2", "ShadowAce", "3,120 pts", "298 Wins", "$3,800,000", "64.2%", 2, "#94a3b8", "#e2e8f0");
-            VBox cardRank1 = createPodiumCard("🥇 #1", "PokerKing_99", "3,450 pts", "342 Wins", "$4,250,000", "68.5%", 1, "#ca8a04", "#facc15");
-            VBox cardRank3 = createPodiumCard("🥉 #3", "LuckyQueen", "2,890 pts", "260 Wins", "$2,950,000", "61.0%", 3, "#b45309", "#f97316");
-            podiumRow.getChildren().addAll(cardRank2, cardRank1, cardRank3);
-        }
-
-        // --- REMAINING RANKS LIST (#4, #5, #6...) ---
-        ranksList = new VBox(10);
-        ranksList.setAlignment(Pos.TOP_CENTER);
-        ranksList.setPadding(new Insets(10, 20, 10, 20));
-
-        if (!onlineMode) ranksList.getChildren().addAll(
-                createRankCard("#4", "BluffMaster", "2,540 pts", "210 Wins", "$2,100,000", "57.8%", 4),
-                createRankCard("#5", "TexasHoldEmPro", "2,310 pts", "195 Wins", "$1,850,000", "55.4%", 5),
-                createRankCard("#6", "admin", "1,980 pts", "150 Wins", "$1,200,000", "52.1%", 6)
-        );
-
-        VBox scrollContent = new VBox(25, filterBox, podiumRow, ranksList);
-        scrollContent.setAlignment(Pos.TOP_CENTER);
-
-        ScrollPane scrollPane = new ScrollPane(scrollContent);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-
-        container.getChildren().add(scrollPane);
-        this.setCenter(container);
+        podium.setAlignment(Pos.BOTTOM_CENTER);
+        podium.setMinHeight(350);
+        podium.setMaxWidth(840);
+        rows.setFillWidth(true);
+        rows.setMaxWidth(840);
+        VBox content = new VBox(18, podium, rows);
+        content.setAlignment(Pos.TOP_CENTER);
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background: #222630; -fx-background-color: transparent; -fx-border-color: transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+        count.setAlignment(Pos.CENTER);
+        panel.getChildren().addAll(heading, count, scroll);
+        StackPane outer = new StackPane(panel);
+        outer.setPadding(new Insets(22));
+        setCenter(outer);
+        if (!onlineMode) showOnlineEntries(List.of());
     }
 
-    public void showOnlineEntries(java.util.List<RankingEntry> entries) {
-        podiumRow.getChildren().clear();
-        ranksList.getChildren().clear();
+    public void showOnlineEntries(List<RankingEntry> entries) {
+        podium.getChildren().clear();
+        rows.getChildren().clear();
+        count.setText(entries.size() + " người chơi");
         if (entries.isEmpty()) {
-            Label empty = new Label("Chưa có bảng xếp hạng từ server.");
-            empty.setTextFill(Color.WHITE);
-            ranksList.getChildren().add(empty);
+            rows.getChildren().add(label("Chưa có dữ liệu xếp hạng từ server.", 16, "#c7cfda"));
             return;
         }
-        java.util.Map<Long, RankingEntry> top = new java.util.HashMap<>();
-        for (RankingEntry entry : entries) if (entry.rank() <= 3) top.put(entry.rank(), entry);
-        for (long rank : new long[]{2, 1, 3}) {
-            RankingEntry entry = top.get(rank);
-            if (entry != null) podiumRow.getChildren().add(createPodiumCard("#" + rank, entry.name(),
-                    entry.rating() + " pts", entry.gamesRated() + " games", "—", "—", (int) rank,
-                    "#ca8a04", "#facc15"));
+        var podiumImage = AssetLoader.getRankingPodiumImage();
+        if (podiumImage != null && !podiumImage.isError()) {
+            ImageView art = new ImageView(podiumImage);
+            // The PNG has transparent margins; crop only for display so the podium fills its lane.
+            art.setViewport(new Rectangle2D(0, 185, podiumImage.getWidth(), 550));
+            art.setFitWidth(840);
+            art.setFitHeight(255);
+            art.setPreserveRatio(false);
+            StackPane.setAlignment(art, Pos.BOTTOM_CENTER);
+            podium.getChildren().add(art);
         }
-        for (RankingEntry entry : entries) if (entry.rank() > 3) {
-            ranksList.getChildren().add(createRankCard("#" + entry.rank(), entry.name(),
-                    entry.rating() + " pts", entry.gamesRated() + " games", "—", "—", (int) entry.rank()));
+        HBox winners = new HBox(0);
+        winners.setAlignment(Pos.BOTTOM_CENTER);
+        winners.setMinWidth(840);
+        winners.setMaxWidth(840);
+        for (int index : new int[]{1, 0, 2}) {
+            if (index < entries.size()) winners.getChildren().add(podiumCard(entries.get(index), index));
+            else {
+                Region emptyPlace = new Region();
+                emptyPlace.setPrefWidth(280);
+                winners.getChildren().add(emptyPlace);
+            }
         }
+        podium.getChildren().add(winners);
+        for (int index = 3; index < entries.size(); index++) rows.getChildren().add(rankRow(entries.get(index)));
     }
 
-    private VBox createPodiumCard(String rankTitle, String username, String points, String wins, String chips, String winRate, int rank, String primaryColor, String accentColor) {
-        VBox card = new VBox(10);
+    private VBox podiumCard(RankingEntry entry, int index) {
+        boolean first = index == 0;
+        String accent = first ? "#ffd54a" : index == 1 ? "#cbd5e1" : "#df9b63";
+        VBox card = new VBox(5);
         card.setAlignment(Pos.TOP_CENTER);
-        card.setPadding(new Insets(18, 15, 18, 15));
-
-        int width = (rank == 1) ? 220 : 190;
-        int height = (rank == 1) ? 290 : 250;
-        card.setPrefSize(width, height);
-
-        card.setStyle(OrnateUi.framedStyle() +
-                " -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.58), 14, 0, 0, 5);");
-
-        // Crown / Rank Crown Badge
-        Label rankLbl = new Label(rankTitle);
-        rankLbl.setFont(Font.font("Arial", FontWeight.BOLD, rank == 1 ? 18 : 15));
-        rankLbl.setTextFill(Color.web(accentColor));
-
-        // Avatar
-        int avatarIndex = (Math.abs(username.hashCode()) % 6) + 1;
-        Image avatarImg = AssetLoader.getAvatarImage("avatar_player_" + avatarIndex + ".png");
-        Image frameImg = AssetLoader.getAvatarFrameImage();
-
-        StackPane avatarStack = new StackPane();
-        int avatarSize = (rank == 1) ? 75 : 60;
-        avatarStack.setPrefSize(avatarSize, avatarSize);
-
-        if (avatarImg != null) {
-            javafx.scene.image.ImageView avatarView = new javafx.scene.image.ImageView(avatarImg);
-            avatarView.setFitWidth(avatarSize - 15);
-            avatarView.setFitHeight(avatarSize - 15);
-            avatarView.setClip(new javafx.scene.shape.Circle((avatarSize - 15) / 2.0, (avatarSize - 15) / 2.0, (avatarSize - 15) / 2.0));
-            avatarStack.getChildren().add(avatarView);
-        }
-
-        if (frameImg != null) {
-            javafx.scene.image.ImageView frameView = new javafx.scene.image.ImageView(frameImg);
-            frameView.setFitWidth(avatarSize);
-            frameView.setFitHeight(avatarSize);
-            frameView.setPreserveRatio(true);
-            frameView.setClip(new javafx.scene.shape.Circle(avatarSize / 2.0, avatarSize / 2.0, avatarSize / 2.0));
-            avatarStack.getChildren().add(frameView);
-        }
-
-        Label nameLbl = new Label(username);
-        nameLbl.setFont(Font.font("Arial", FontWeight.BOLD, rank == 1 ? 16 : 14));
-        nameLbl.setTextFill(Color.WHITE);
-
-        Label ptsLbl = new Label("⭐ " + points);
-        ptsLbl.setFont(Font.font("Arial", FontWeight.BOLD, rank == 1 ? 15 : 13));
-        ptsLbl.setTextFill(Color.web(accentColor));
-
-        Label chipsLbl = new Label(onlineMode ? wins : "💰 " + chips);
-        chipsLbl.setFont(Font.font("Arial", FontWeight.NORMAL, 12));
-        chipsLbl.setTextFill(Color.GOLD);
-
-        Label winRateLbl = new Label("📈 Win Rate: " + winRate);
-        winRateLbl.setFont(Font.font("Arial", FontWeight.NORMAL, 11));
-        winRateLbl.setTextFill(Color.LIGHTGRAY);
-
-        card.getChildren().addAll(rankLbl, avatarStack, nameLbl, ptsLbl, chipsLbl);
-        if (!onlineMode) card.getChildren().add(winRateLbl);
+        card.setPadding(new Insets(4, 10, 58, 10));
+        card.setMinWidth(280);
+        card.setPrefWidth(280);
+        card.setMaxWidth(280);
+        card.setMinHeight(350);
+        Label name = label(entry.name(), first ? 20 : 17, "#ffffff");
+        name.setMinWidth(250);
+        name.setMaxWidth(250);
+        name.setAlignment(Pos.CENTER);
+        name.setTextOverrun(OverrunStyle.ELLIPSIS);
+        Region gap = new Region();
+        VBox.setVgrow(gap, Priority.ALWAYS);
+        Label position = label("#" + (index + 1), 22, accent);
+        position.setStyle("-fx-effect: dropshadow(three-pass-box, black, 5, 0.8, 0, 2);");
+        Label earnings = label(String.format("$%,d", entry.chipsEarned()), first ? 21 : 18, "#ffd54a");
+        earnings.setMinWidth(250);
+        earnings.setMaxWidth(250);
+        earnings.setAlignment(Pos.CENTER);
+        earnings.setTextOverrun(OverrunStyle.ELLIPSIS);
+        card.getChildren().addAll(avatar(entry, first ? 74 : 66), name,
+                earnings, gap, position);
         return card;
     }
 
-    private HBox createRankCard(String rankStr, String username, String points, String wins, String chips, String winRate, int avatarIndex) {
-        HBox card = new HBox(15);
-        card.setAlignment(Pos.CENTER_LEFT);
-        card.setPadding(new Insets(12, 25, 12, 25));
-        card.setMaxWidth(800);
-        card.setStyle(OrnateUi.compactPanelStyle() + " -fx-cursor: hand;");
-        card.setOnMouseEntered(e -> card.setScaleX(1.01));
-        card.setOnMouseExited(e -> card.setScaleX(1));
-
-        // Rank Badge
-        Label rankBadge = new Label(rankStr);
-        rankBadge.setFont(Font.font("Arial", FontWeight.BOLD, 15));
-        rankBadge.setTextFill(Color.WHITE);
-        rankBadge.setStyle("-fx-background-color: #6b3324; -fx-border-color: #bd9252; " +
-                "-fx-border-radius: 13; -fx-background-radius: 13; -fx-padding: 6 14;");
-
-        // Small Avatar
-        Image avatarImg = AssetLoader.getAvatarImage("avatar_player_" + ((avatarIndex % 6) + 1) + ".png");
-        javafx.scene.image.ImageView avatarView = new javafx.scene.image.ImageView(avatarImg);
-        avatarView.setFitWidth(40);
-        avatarView.setFitHeight(40);
-        avatarView.setClip(new javafx.scene.shape.Circle(20, 20, 20));
-
-        // Name & Wins
-        VBox nameBox = new VBox(2);
-        Label nameLbl = new Label(username);
-        nameLbl.setFont(Font.font("Arial", FontWeight.BOLD, 15));
-        nameLbl.setTextFill(Color.WHITE);
-
-        Label winsLbl = new Label(onlineMode ? wins : "🏆 " + wins + "  •  Win Rate: " + winRate);
-        winsLbl.setFont(Font.font("Arial", FontWeight.NORMAL, 12));
-        winsLbl.setTextFill(Color.LIGHTGRAY);
-        nameBox.getChildren().addAll(nameLbl, winsLbl);
-
+    private HBox rankRow(RankingEntry entry) {
+        HBox row = new HBox(16);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(10, 18, 10, 18));
+        row.setMaxWidth(840);
+        row.setStyle("-fx-background-color: #2d323e; -fx-background-radius: 13; "
+                + "-fx-border-color: #525a69; -fx-border-radius: 13;");
+        Label rank = label("#" + entry.rank(), 21, "#d8dde7");
+        rank.setMinWidth(62);
+        rank.setAlignment(Pos.CENTER);
+        Label name = label(entry.name(), 17, "#ffffff");
+        name.setMinWidth(200);
+        name.setMaxWidth(320);
+        name.setTextOverrun(OverrunStyle.ELLIPSIS);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label earnings = label(String.format("$%,d", entry.chipsEarned()), 20, "#ffd54a");
+        earnings.setMinWidth(190);
+        earnings.setAlignment(Pos.CENTER_RIGHT);
+        row.getChildren().addAll(rank, avatar(entry, 52), name, spacer, earnings);
+        return row;
+    }
 
-        // Stats (Points & Chips)
-        VBox statsBox = new VBox(2);
-        statsBox.setAlignment(Pos.CENTER_RIGHT);
+    private ImageView avatar(RankingEntry entry, double size) {
+        String file = entry.avatarUrl() != null && entry.avatarUrl().matches("avatar_player_[1-6]\\.png")
+                ? entry.avatarUrl() : "avatar_player_" + (Math.floorMod(entry.name().hashCode(), 6) + 1) + ".png";
+        ImageView view = new ImageView(AssetLoader.getAvatarImage(file));
+        view.setFitWidth(size);
+        view.setFitHeight(size);
+        view.setPreserveRatio(false);
+        return view;
+    }
 
-        Label ptsLbl = new Label("⭐ " + points);
-        ptsLbl.setFont(Font.font("Arial", FontWeight.BOLD, 15));
-        ptsLbl.setTextFill(Color.web("#facc15"));
-
-        Label chipsLbl = new Label("💰 " + chips);
-        chipsLbl.setFont(Font.font("Arial", FontWeight.BOLD, 13));
-        chipsLbl.setTextFill(Color.web("#34d399"));
-
-        statsBox.getChildren().add(ptsLbl);
-        if (!onlineMode) statsBox.getChildren().add(chipsLbl);
-
-        card.getChildren().addAll(rankBadge, avatarView, nameBox, spacer, statsBox);
-        return card;
+    private static Label label(String text, int size, String color) {
+        Label label = new Label(text);
+        label.setFont(Font.font("Segoe UI", FontWeight.BOLD, size));
+        label.setTextFill(Color.web(color));
+        return label;
     }
 }

@@ -212,21 +212,14 @@ public final class PokerSocketClient
      */
     public CompletableFuture<JsonObject> updateDisplayName(
             String displayName) {
+        return updateProfile(displayName, null);
+    }
+
+    public CompletableFuture<JsonObject> updateProfile(String displayName, String avatarUrl) {
 
         JsonObject body = new JsonObject();
         body.addProperty("displayName", displayName);
-
-        JsonObject profile = me;
-
-        if (profile != null
-                && profile.has("avatarUrl")
-                && !profile.get("avatarUrl").isJsonNull()) {
-
-            body.addProperty(
-                    "avatarUrl",
-                    profile.get("avatarUrl").getAsString()
-            );
-        }
+        if (avatarUrl != null) body.addProperty("avatarUrl", avatarUrl);
 
         return request("PATCH", "/api/v1/me", body)
                 .thenApply(updated -> {

@@ -13,7 +13,7 @@ public final class ProfileDao {
         try(Connection c=database.open();PreparedStatement ps=c.prepareStatement(sql)){ps.setLong(1,userId);try(ResultSet rs=ps.executeQuery()){return rs.next()?Optional.of(new ProfileDto(rs.getLong(1),rs.getString(2),rs.getString(3),rs.getString(4),rs.getLong(5))):Optional.empty();}}
     }
     public void update(long userId,String displayName,String avatarUrl)throws SQLException{
-        try(Connection c=database.open();PreparedStatement ps=c.prepareStatement("UPDATE player_profiles SET display_name=?,avatar_url=? WHERE user_id=?")){ps.setString(1,displayName);ps.setString(2,avatarUrl);ps.setLong(3,userId);ps.executeUpdate();}
+        try(Connection c=database.open();PreparedStatement ps=c.prepareStatement("UPDATE player_profiles SET display_name=?,avatar_url=COALESCE(?,avatar_url) WHERE user_id=?")){ps.setString(1,displayName);ps.setString(2,avatarUrl);ps.setLong(3,userId);ps.executeUpdate();}
     }
     public void setPresence(long userId,String status)throws SQLException{
         try(Connection c=database.open();PreparedStatement ps=c.prepareStatement("UPDATE player_profiles SET online_status=? WHERE user_id=?")){ps.setString(1,status);ps.setLong(2,userId);ps.executeUpdate();}

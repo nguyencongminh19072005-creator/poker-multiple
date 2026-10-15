@@ -5,8 +5,8 @@ public final class RoomAdmissionRules {
     private RoomAdmissionRules() {
     }
 
-    public static void requireOpen(String status, boolean spectator) {
-        if (!"WAITING".equals(status) && !(spectator && "PLAYING".equals(status))) {
+    public static void requireOpen(String status) {
+        if (!"WAITING".equals(status) && !"PLAYING".equals(status)) {
             throw new IllegalArgumentException("Phòng không còn nhận người chơi");
         }
     }

@@ -53,6 +53,7 @@ public final class AccountOperations {
     public Optional<User> refreshUser(String refreshToken) throws SQLException {
         var userId = refreshTokens.activeUser(refreshToken);
         if (userId.isEmpty()) return Optional.empty();
+        users.ensureAvatar(userId.getAsLong());
         Optional<User> user = users.findById(userId.getAsLong());
         if (user.isPresent()) profiles.setPresence(user.get().id(), "ONLINE");
         return user;

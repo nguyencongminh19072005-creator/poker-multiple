@@ -21,7 +21,7 @@ final class RankingCommandHandler implements CommandHandler {
                 CommandJson.error(exchange, 405, "Phương thức không được hỗ trợ"); return;
             }
             if ("/api/v1/rankings/leaderboard".equals(path)) {
-                CommandJson.send(exchange, 200, Map.of("items", rankings.leaderboard(100))); return;
+                CommandJson.send(exchange, 200, Map.of("items", rankings.leaderboard(Integer.MAX_VALUE))); return;
             }
             if ("/api/v1/rankings/me".equals(path)) {
                 var entry = rankings.mine(userId);

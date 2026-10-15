@@ -104,15 +104,16 @@ public final class RoomDao {
     }
 
     public List<RoomMemberDto> members(long roomId) throws SQLException {
-        String sql = "SELECT rp.user_id,u.username,rp.seat_number,rp.player_state,rp.table_chips "
+        String sql = "SELECT rp.user_id,u.username,rp.seat_number,rp.player_state,rp.table_chips,p.avatar_url "
                 + "FROM room_players rp JOIN users u ON u.id=rp.user_id "
+                + "LEFT JOIN player_profiles p ON p.user_id=rp.user_id "
                 + "WHERE rp.room_id=? AND rp.left_at IS NULL ORDER BY rp.seat_number";
         try (Connection c = database.open(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, roomId);
             try (ResultSet rs = ps.executeQuery()) {
                 List<RoomMemberDto> result = new ArrayList<>();
                 while (rs.next()) result.add(new RoomMemberDto(rs.getLong(1), rs.getString(2),
-                        (Integer) rs.getObject(3), rs.getString(4), rs.getLong(5)));
+                        (Integer) rs.getObject(3), rs.getString(4), rs.getLong(5), rs.getString(6)));
                 return result;
             }
         }
@@ -124,7 +125,8 @@ public final class RoomDao {
     }
 
     public record RoomRow(String type, String passwordHash, String status, int maxPlayers, long buyIn) { }
-    public record Membership(boolean exists, boolean active, Integer seatNumber, long tableChips) { }
+    public record Membership(boolean exists, boolean active, Integer seatNumber, long tableChips,
+                             String state) { }
 
     /** SQL primitives sharing a single transaction; no game or room policy is decided here. */
     public static final class RoomTransaction {
@@ -165,15 +167,15 @@ public final class RoomDao {
         }
 
         public Membership lockMembership(long roomId, long userId) throws SQLException {
-            String sql = "SELECT seat_number,left_at IS NULL,table_chips FROM room_players "
+            String sql = "SELECT seat_number,left_at IS NULL,table_chips,player_state FROM room_players "
                     + "WHERE room_id=? AND user_id=? FOR UPDATE";
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 ps.setLong(1, roomId);
                 ps.setLong(2, userId);
                 try (ResultSet rs = ps.executeQuery()) {
                     return rs.next() ? new Membership(true, rs.getBoolean(2),
-                            (Integer) rs.getObject(1), rs.getLong(3))
-                            : new Membership(false, false, null, 0);
+                            (Integer) rs.getObject(1), rs.getLong(3), rs.getString(4))
+                            : new Membership(false, false, null, 0, null);
                 }
             }
         }

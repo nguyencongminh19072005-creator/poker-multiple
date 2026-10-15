@@ -102,7 +102,9 @@ public final class PokerApplicationController implements HeaderNode.HeaderAction
     private void showLobby() {
         friendScreen.clear();
         roomScreens.reset();
-        lobbyView = new LobbyView(auth.username(), new LobbyView.LobbyActions() {
+        String displayName = ClientJson.string(profileController.cachedProfile(), "displayName");
+        String avatarUrl = ClientJson.string(profileController.cachedProfile(), "avatarUrl");
+        lobbyView = new LobbyView(displayName.isBlank() ? auth.username() : displayName, new LobbyView.LobbyActions() {
             @Override public void onJoinRoom(String id, boolean privateRoom, boolean spectator) {
                 roomScreens.join(ClientJson.parseId(id), null, spectator);
             }
@@ -115,7 +117,7 @@ public final class PokerApplicationController implements HeaderNode.HeaderAction
             @Override public void onOpenFriends() { friendScreen.show(); }
             @Override public void onOpenAdmin() { adminScreen.show(); }
             @Override public void onLogout() { logout(); }
-        }, true);
+        }, true, avatarUrl, "ADMIN".equals(auth.role()));
         scenes.show(lobbyView);
         refreshLobby();
     }

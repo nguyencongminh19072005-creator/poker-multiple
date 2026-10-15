@@ -209,7 +209,7 @@ public final class RoomScreens {
         for (int i = 0; i < capacity; i++) {
             JsonObject member = membersBySeat.get(i + 1);
             seats.add(new SeatViewModel(i + 1, member == null ? "Ghế " + (i + 1) : string(member, "username"),
-                    "avatar_player_" + (i % 6 + 1) + ".png",
+                    member == null ? null : memberAvatar(member),
                     member == null ? 0 : (int) Math.min(Integer.MAX_VALUE, number(member, "tableChips")), false));
         }
         PokerTableContainer result = new PokerTableContainer(seats);
@@ -231,21 +231,45 @@ public final class RoomScreens {
         return result;
     }
 
+    private static String memberAvatar(JsonObject member) {
+        String saved = string(member, "avatarUrl");
+        if (saved.matches("avatar_player_[1-6]\\.png")) return saved;
+        return "avatar_player_" + (Math.floorMod(string(member, "username").hashCode(), 6) + 1) + ".png";
+    }
+
     public void refreshRoom() {
         if (roomId == 0) return;
-        perform(api.request("GET", "/api/v1/rooms/" + roomId, null), detail -> {
+        long requestedRoomId = roomId;
+        perform(api.request("GET", "/api/v1/rooms/" + requestedRoomId, null), detail -> {
+            if (roomId != requestedRoomId || roomView == null) return;
+            long previousOwner = room == null ? 0 : number(room.getAsJsonObject("room"), "ownerUserId");
             room = detail;
             renderRoom();
+            long currentOwner = number(detail.getAsJsonObject("room"), "ownerUserId");
+            if (previousOwner > 0 && currentOwner > 0 && previousOwner != currentOwner) {
+                for (JsonElement element : detail.getAsJsonArray("members")) {
+                    JsonObject member = element.getAsJsonObject();
+                    if (number(member, "userId") == currentOwner) {
+                        roomView.showNotice("CHỦ PHÒNG MỚI",
+                                string(member, "username") + " đã trở thành chủ phòng.", memberAvatar(member));
+                        break;
+                    }
+                }
+            }
         });
     }
 
     private void renderRoom() {
         if (room == null || roomView == null) return;
         List<String> occupiedSeats = new ArrayList<>();
+        Set<Integer> occupiedSeatNumbers = new HashSet<>();
         for (JsonElement element : room.getAsJsonArray("members")) {
             JsonObject member = element.getAsJsonObject();
-            occupiedSeats.add(number(member, "userId") + ":" +
-                    (!hasSeat(member) ? "spectator" : member.get("seatNumber").getAsString()));
+            if (hasSeat(member)) {
+                occupiedSeats.add(number(member, "userId") + ":"
+                        + member.get("seatNumber").getAsString() + ":" + string(member, "avatarUrl"));
+                occupiedSeatNumbers.add((int) number(member, "seatNumber"));
+            }
         }
         Collections.sort(occupiedSeats);
         String signature = String.join("|", occupiedSeats);
@@ -278,10 +302,16 @@ public final class RoomScreens {
             }
         }
         boolean waitingRoom = "WAITING".equals(string(info, "status"));
+        boolean playingRoom = "PLAYING".equals(string(info, "status"));
+        if (snapshot == null && table != null) {
+            for (int index = 0; index < table.getPlayerNodes().size(); index++)
+                table.getPlayerNodes().get(index).setVisible(!playingRoom
+                        || occupiedSeatNumbers.contains(index + 1));
+        }
         uiState = !seated ? RoomUiState.SPECTATING : ready ? RoomUiState.READY : RoomUiState.WAITING;
         boolean host = ownerId == api.userId();
         readyButton.setDisable(!seated || !waitingRoom);
-        sitButton.setDisable(seated || !waitingRoom ||
+        sitButton.setDisable(seated || !(waitingRoom || playingRoom) ||
                 firstFreeSeat(room, (int) number(info, "maxPlayers")) == 0);
         sitButton.setVisible(!seated);
         sitButton.setManaged(!seated);
@@ -365,25 +395,38 @@ public final class RoomScreens {
                 && (!Objects.equals(displayedResultGameId, gameId) || displayedResultTable != table);
         table.getTableAreaNode().updateOnline(board, displayPot, phase);
         List<Card> mine = cards(snapshot.getAsJsonArray("holeCards"));
+        Map<Integer, JsonObject> roomSeats = new HashMap<>();
+        if (room != null) for (JsonElement memberElement : room.getAsJsonArray("members")) {
+            JsonObject member = memberElement.getAsJsonObject();
+            if (hasSeat(member)) roomSeats.put((int) number(member, "seatNumber"), member);
+        }
         for (int index = 0; index < table.getPlayerNodes().size(); index++) {
             int seat = index + 1;
             JsonObject player = bySeat.get(seat);
+            JsonObject roomMember = roomSeats.get(seat);
             long user = player == null ? 0 : number(player, "userId");
             List<Card> revealed = player == null ? List.of() : cards(player.getAsJsonArray("showdownCards"));
             boolean flipOpponent = firstResultDisplay && user != api.userId() && revealed.size() == 2;
             var playerNode = table.getPlayerNodes().get(index);
-            playerNode.updateOnline(player != null,
-                    player == null ? 0 : number(player, "tableChips"),
+            // Keep the logical seat available for admission, but draw only seats
+            // occupied in this hand or reserved by someone joining the next one.
+            playerNode.setVisible(player != null || roomMember != null);
+            playerNode.updateOnline(player != null || roomMember != null,
+                    player == null ? roomMember == null ? 0 : number(roomMember, "tableChips")
+                            : number(player, "tableChips"),
                     player == null ? 0 : number(player, "currentBet"), player == null ? "" : string(player, "participation"),
-                    player != null && bool(player, "connected"),
+                    player == null ? roomMember != null : bool(player, "connected"),
                     player != null && user == number(state, "currentTurnUserId"),
                     user == api.userId() ? mine : flipOpponent ? List.of() : revealed,
                     player != null && user != api.userId(),
-                    room != null && user == number(room.getAsJsonObject("room"), "ownerUserId"),
-                    seat == number(state, "dealerSeat") ? "D" : seat == number(state, "smallBlindSeat") ? "SB" :
+                    room != null && (player == null ? roomMember != null
+                            && number(roomMember, "userId") == number(room.getAsJsonObject("room"), "ownerUserId")
+                            : user == number(room.getAsJsonObject("room"), "ownerUserId")),
+                    player == null ? "" : seat == number(state, "dealerSeat") ? "D" : seat == number(state, "smallBlindSeat") ? "SB" :
                             seat == number(state, "bigBlindSeat") ? "BB" : "",
                     player == null ? "" : string(player, "lastAction"));
             if (!"FINISHED".equals(phase)) playerNode.hideWin();
+            if (player == null && roomMember != null) playerNode.setPendingNextHand();
             if ("FINISHED".equals(phase) && revealed.size() == 2) playerNode.showFinishedCardsClearly();
             if (flipOpponent) playerNode.revealShowdownCards(revealed);
         }
@@ -401,21 +444,21 @@ public final class RoomScreens {
         boolean myTurn = actorId != 0 && actorId == api.userId();
         if (turnChanged && myTurn) SoundEffects.play(SoundEffects.Sound.YOUR_TURN);
         String actorName = playerName(players, actorId);
-        boolean seated = false;
-        if (room != null) for (JsonElement memberElement : room.getAsJsonArray("members")) {
-            JsonObject member = memberElement.getAsJsonObject();
-            if (number(member, "userId") == api.userId() && hasSeat(member)) seated = true;
-        }
-        boolean resultForSeatedPlayer = seated;
-        uiState = !seated ? RoomUiState.SPECTATING
+        boolean playingThisHand = bySeat.values().stream()
+                .anyMatch(player -> number(player, "userId") == api.userId());
+        boolean waitingForNextHand = !playingThisHand && roomSeats.values().stream()
+                .anyMatch(member -> number(member, "userId") == api.userId());
+        boolean resultForSeatedPlayer = playingThisHand;
+        uiState = !playingThisHand ? RoomUiState.SPECTATING
                 : "FINISHED".equals(phase) ? RoomUiState.GAME_FINISHED
                 : myTurn ? RoomUiState.PLAYING_MY_TURN : RoomUiState.PLAYING_NOT_MY_TURN;
         ResultView resultView = "FINISHED".equals(phase) && result != null
-                ? resultView(result, players, bySeat, seated) : null;
+                ? resultView(result, players, bySeat, playingThisHand) : null;
         controls.updateOnline(legal, turn == null ? 0 : number(turn, "callAmount"),
                 turn == null ? 0 : number(turn, "minimumTarget"),
                 turn == null ? 0 : number(turn, "maximumTarget"), displayPot, uiState,
                 resultView != null ? resultView.status()
+                        : waitingForNextHand ? "Đã ngồi ghế, chờ ván kế tiếp"
                         : myTurn ? "YOUR TURN  ⏱ " + turnSeconds + "s"
                         : actorId == 0 ? "Đang xử lý kết quả ván"
                         : "Đang chờ " + actorName + "...",
@@ -622,10 +665,13 @@ public final class RoomScreens {
     }
 
     public void leaveRoom() {
-        if (roomId == 0 || roomView == null || !roomView.confirmLeave(gameId != null)) return;
-        if (gameId != null) perform(api.request("POST", "/api/v1/games/" + gameId + "/leave", new JsonObject()),
+        if (roomId == 0 || roomView == null) return;
+        boolean playing = room != null && "PLAYING".equals(string(room.getAsJsonObject("room"), "status"))
+                || snapshot != null && snapshot.has("publicState")
+                && !"FINISHED".equals(string(snapshot.getAsJsonObject("publicState"), "phase"));
+        if (!roomView.confirmLeave(playing)) return;
+        perform(api.request("POST", "/api/v1/rooms/" + roomId + "/leave", new JsonObject()),
                 ignored -> lobby.run());
-        else perform(api.request("POST", "/api/v1/rooms/" + roomId + "/leave", new JsonObject()), ignored -> lobby.run());
     }
 
     private <T> void perform(CompletableFuture<T> task, Consumer<T> success) {

@@ -42,7 +42,7 @@ public final class RoomOperations {
         rooms.transaction(tx -> {
             RoomDao.RoomRow room = tx.lockRoom(roomId)
                     .orElseThrow(() -> new IllegalArgumentException("Phòng không tồn tại"));
-            RoomAdmissionRules.requireOpen(room.status(), spectator);
+            RoomAdmissionRules.requireOpen(room.status());
             RoomDao.Membership member = tx.lockMembership(roomId, userId);
             boolean converting = member.active() && member.seatNumber() == null && !spectator;
             if ("PRIVATE".equals(room.type()) && !converting
@@ -57,8 +57,11 @@ public final class RoomOperations {
                 if (tx.seatOccupied(roomId, seat)) throw new IllegalArgumentException("Ghế đã có người");
                 if (!tx.debitWallet(userId, amount)) throw new IllegalArgumentException("Không đủ chip Buy-in");
             }
+            // A seat taken during a hand is reserved for the next hand. It must
+            // not become an active player in the current hand's snapshot.
+            String state = spectator || "PLAYING".equals(room.status()) ? "SPECTATING" : "NOT_READY";
             tx.upsertMember(roomId, userId, spectator ? null : seat,
-                    spectator ? "SPECTATING" : "NOT_READY", amount, member.exists());
+                    state, amount, member.exists());
             return null;
         });
     }
@@ -67,9 +70,8 @@ public final class RoomOperations {
             RoomDao.RoomRow room = tx.lockRoom(roomId)
                     .orElseThrow(() -> new IllegalArgumentException("Phòng không tồn tại"));
             RoomDao.Membership member = tx.lockMembership(roomId, userId);
-            if ("PLAYING".equals(room.status()) && member.seatNumber() != null && member.active()) {
-                throw new IllegalArgumentException("Hãy dùng lệnh rời ván để bảo toàn chip đang cược");
-            }
+            if ("PLAYING".equals(room.status()))
+                throw new IllegalArgumentException("Không thể rời phòng khi ván đang diễn ra");
             long chips = tx.lockActiveTableChips(roomId, userId)
                     .orElseThrow(() -> new IllegalArgumentException("Bạn không ở trong phòng"));
             tx.markLeft(roomId, userId);
@@ -133,7 +135,9 @@ public final class RoomOperations {
         return rooms.transaction(tx -> {
             long roomId = tx.insertRoom(normalizedName, owner, finalType, finalPasswordHash,
                     maxPlayers, smallBlind, bigBlind, buyIn);
-            tx.upsertMember(roomId, owner, null, "SPECTATING", 0, false);
+            if (!tx.debitWallet(owner, buyIn))
+                throw new IllegalArgumentException("Không đủ chip Buy-in để tạo bàn");
+            tx.upsertMember(roomId, owner, 1, "NOT_READY", buyIn, false);
             return roomId;
         });
     }

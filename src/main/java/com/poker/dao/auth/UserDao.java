@@ -47,8 +47,12 @@ public final class UserDao {
                     ps.setString(1, username); ps.setString(2, passwordHash); ps.setString(3, email); ps.executeUpdate();
                     try (ResultSet keys = ps.getGeneratedKeys()) { if (!keys.next()) throw new SQLException("Không lấy được user id"); id = keys.getLong(1); }
                 }
-                try (PreparedStatement ps = c.prepareStatement("INSERT INTO player_profiles(user_id,display_name) VALUES(?,?)")) {
-                    ps.setLong(1, id); ps.setString(2, displayName); ps.executeUpdate();
+                try (PreparedStatement ps = c.prepareStatement(
+                        "INSERT INTO player_profiles(user_id,display_name,avatar_url) VALUES(?,?,?)")) {
+                    ps.setLong(1, id);
+                    ps.setString(2, displayName);
+                    ps.setString(3, defaultAvatar(displayName));
+                    ps.executeUpdate();
                 }
                 try (PreparedStatement ps = c.prepareStatement("INSERT INTO player_statistics(user_id,updated_at) VALUES(?,?)")) {
                     ps.setLong(1, id); ps.setTimestamp(2, Timestamp.from(Instant.now())); ps.executeUpdate();
@@ -62,9 +66,33 @@ public final class UserDao {
     }
 
     public void markLogin(long userId) throws SQLException {
+        ensureAvatar(userId);
         try (Connection c=database.open(); PreparedStatement ps=c.prepareStatement("UPDATE users SET last_login_at=CURRENT_TIMESTAMP(6) WHERE id=?")) {
             ps.setLong(1,userId); ps.executeUpdate();
         }
+    }
+
+    /** Backfill older profiles once; later profile saves remain authoritative. */
+    public void ensureAvatar(long userId) throws SQLException {
+        try (Connection c = database.open();
+             PreparedStatement read = c.prepareStatement(
+                     "SELECT display_name,avatar_url FROM player_profiles WHERE user_id=?")) {
+            read.setLong(1, userId);
+            try (ResultSet rs = read.executeQuery()) {
+                if (!rs.next() || rs.getString(2) != null) return;
+                String fallback = defaultAvatar(rs.getString(1));
+                try (PreparedStatement write = c.prepareStatement(
+                        "UPDATE player_profiles SET avatar_url=? WHERE user_id=? AND avatar_url IS NULL")) {
+                    write.setString(1, fallback);
+                    write.setLong(2, userId);
+                    write.executeUpdate();
+                }
+            }
+        }
+    }
+
+    private static String defaultAvatar(String displayName) {
+        return "avatar_player_" + (Math.floorMod(displayName.hashCode(), 6) + 1) + ".png";
     }
 
     private static AccountRow row(ResultSet rs) throws SQLException {

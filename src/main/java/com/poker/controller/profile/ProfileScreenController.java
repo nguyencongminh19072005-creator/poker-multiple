@@ -44,14 +44,18 @@ public final class ProfileScreenController {
 
     public void show() {
         String displayName = ClientJson.string(profile.cachedProfile(), "displayName");
+        String avatarUrl = ClientJson.string(profile.cachedProfile(), "avatarUrl");
         ProfileHistoryView view = new ProfileHistoryView(displayName.isBlank() ? auth.username() : displayName,
                 auth.userId(), new ProfileHistoryView.ProfileActions() {
                     @Override public void onBackToLobby() { back.run(); }
                     @Override public void onLogout() { logout.run(); }
-                }, true, name -> updateName(name));
+                }, true, avatarUrl, this::updateProfile);
         show.accept(view);
 
         CompletableFuture<JsonObject> me = profile.profile();
+        me.thenAccept(data -> Platform.runLater(() -> view.showOnlineIdentity(
+                ClientJson.string(data, "displayName"), ClientJson.string(data, "avatarUrl"))))
+                .exceptionally(failure -> { Platform.runLater(() -> error.accept(ClientJson.cause(failure))); return null; });
         CompletableFuture<JsonObject> rank = profile.ranking();
         CompletableFuture<JsonObject> stats = statistics.playerStatistics();
         CompletableFuture<JsonObject> history = profile.history();
@@ -63,7 +67,8 @@ public final class ProfileScreenController {
             values.put("❌ Trận thua", Long.toString(ClientJson.number(valuesFromServer, "totalLosses")));
             values.put("📈 Tỷ lệ thắng", ClientJson.string(valuesFromServer, "winRate") + "%");
             values.put("⏱️ Thời gian chơi", ClientJson.number(valuesFromServer, "averagePlayingSeconds") / 60 + " phút/trận");
-            values.put("⭐ Ranking Points", ClientJson.number(rank.join(), "rating") + " pts");
+            values.put("💰 Tiền thắng tích lũy", "$" + String.format("%,d",
+                    ClientJson.number(rank.join(), "chipsEarned")));
             List<ProfileHistoryView.MatchModel> matches = new ArrayList<>();
             DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
                     .withZone(ZoneId.systemDefault());
@@ -79,13 +84,12 @@ public final class ProfileScreenController {
                         (change >= 0 ? "+$" : "-$") + String.format("%,d", Math.abs(change))));
             }
             view.showOnlineData(ClientJson.number(me.join(), "accountChips"),
-                    "Hạng #" + ClientJson.number(rank.join(), "rank") + " (" +
-                            ClientJson.number(rank.join(), "rating") + " pts)", values, matches);
+                    "Hạng #" + ClientJson.number(rank.join(), "rank") + " ($" +
+                            String.format("%,d", ClientJson.number(rank.join(), "chipsEarned")) + ")", values, matches);
         })).exceptionally(failure -> { Platform.runLater(() -> error.accept(ClientJson.cause(failure))); return null; });
     }
 
-    private void updateName(String name) {
-        profile.updateDisplayName(name).thenRun(() -> Platform.runLater(this::show))
-                .exceptionally(failure -> { Platform.runLater(() -> error.accept(ClientJson.cause(failure))); return null; });
+    private CompletableFuture<Void> updateProfile(String name, String avatarUrl) {
+        return profile.updateProfile(name, avatarUrl).thenAccept(ignored -> Platform.runLater(this::show));
     }
 }

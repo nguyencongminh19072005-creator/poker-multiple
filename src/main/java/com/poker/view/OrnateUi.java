@@ -29,6 +29,10 @@ public final class OrnateUi {
         return imageStyleAt("/assets/reference-v2/pack/frames/modal-dark.png", "100% 100%");
     }
 
+    public static String noticeStyle() {
+        return imageStyleAt("/assets/reference-v2/pack/frames/title-banner.png", "100% 100%");
+    }
+
     public static String compactPanelStyle() {
         return "-fx-background-color: linear-gradient(to bottom, #f0cf86, #956127), "
                 + "linear-gradient(to bottom, #60341f, #1d110d), "

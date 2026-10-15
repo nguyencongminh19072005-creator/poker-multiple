@@ -26,14 +26,14 @@ public class PokerTableContainer extends BorderPane {
     private static final double BOARD_HEIGHT = 600;
     // Clockwise from the local player's fixed bottom-center position.
     private static final double[][] SIX_SEATS = {
-            {460, 535}, {220, 460}, {82, 270}, {264, 85}, {656, 85}, {828, 270}
+            {460, 535}, {195, 465}, {45, 285}, {221, 122}, {699, 122}, {875, 285}
     };
     private static final double[][] NINE_SEATS = {
-            {460, 535}, {220, 460}, {74, 270}, {240, 85}, {355, 65},
-            {565, 65}, {680, 85}, {828, 270}, {700, 460}
+            {460, 535}, {195, 465}, {45, 285}, {200, 122}, {365, 105},
+            {555, 105}, {720, 122}, {875, 285}, {725, 465}
     };
     private static final double[][] SPECTATOR_SIX_SEATS = {
-            {220, 460}, {82, 270}, {264, 85}, {656, 85}, {828, 270}, {700, 460}
+            {195, 465}, {45, 285}, {221, 122}, {699, 122}, {875, 285}, {725, 465}
     };
     private final TableAreaNode tableAreaNode = new TableAreaNode();
     private final List<PlayerNode> playerNodes = new ArrayList<>();

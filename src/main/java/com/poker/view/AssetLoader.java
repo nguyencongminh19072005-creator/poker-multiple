@@ -126,6 +126,10 @@ public class AssetLoader {
         return null; // The red v2 portraits already have a gold frame.
     }
 
+    public static Image getRankingPodiumImage() {
+        return loadImage("ranking/podium-123.png");
+    }
+
     public static Image getDealerAvatarImage() {
         return getAvatarImage("avatar_player_1.png");
     }

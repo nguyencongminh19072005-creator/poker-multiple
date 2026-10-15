@@ -16,6 +16,8 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
 
 public class ProfileHistoryView extends BorderPane {
 
@@ -28,23 +30,27 @@ public class ProfileHistoryView extends BorderPane {
     private final Long userId;
     private final ProfileActions actions;
     private final boolean onlineMode;
-    private final java.util.function.Consumer<String> onlineNameChange;
+    private final BiFunction<String, String, CompletableFuture<Void>> onlineProfileChange;
+    private String currentAvatar;
     private Label balanceValue;
     private Label rankingValue;
+    private Label profileNameLabel;
+    private ImageView profileAvatarView;
     private final java.util.Map<String, Label> statisticValues = new java.util.HashMap<>();
     private VBox historyCards;
 
     public ProfileHistoryView(String username, Long userId, ProfileActions actions) {
-        this(username, userId, actions, false, null);
+        this(username, userId, actions, false, null, null);
     }
 
     public ProfileHistoryView(String username, Long userId, ProfileActions actions, boolean onlineMode,
-                              java.util.function.Consumer<String> onlineNameChange) {
+                              String avatarUrl, BiFunction<String, String, CompletableFuture<Void>> onlineProfileChange) {
         this.currentUsername = username;
         this.userId = userId;
         this.actions = actions;
         this.onlineMode = onlineMode;
-        this.onlineNameChange = onlineNameChange;
+        this.currentAvatar = avatarUrl;
+        this.onlineProfileChange = onlineProfileChange;
 
         // Background
         Image bgImg = AssetLoader.getLobbyBackgroundImage();
@@ -120,35 +126,23 @@ public class ProfileHistoryView extends BorderPane {
         avatarFrameBox.setStyle(classicCardStyle);
 
         // 1. Avatar with Gold Frame
-        int avatarIndex = (Math.abs(currentUsername.hashCode()) % 6) + 1;
-        Image rawAvatarImg = AssetLoader.getAvatarImage("avatar_player_" + avatarIndex + ".png");
-        Image frameImg = AssetLoader.getAvatarFrameImage();
+        Image rawAvatarImg = AssetLoader.getAvatarImage(avatarFile());
 
         StackPane avatarStack = new StackPane();
         avatarStack.setPrefSize(100, 100);
 
         if (rawAvatarImg != null) {
-            ImageView avatarView = new ImageView(rawAvatarImg);
-            avatarView.setFitWidth(68);
-            avatarView.setFitHeight(68);
-            avatarView.setPreserveRatio(true);
-            avatarView.setClip(new Circle(34, 34, 34));
-            avatarStack.getChildren().add(avatarView);
-        }
-
-        if (frameImg != null) {
-            ImageView frameView = new ImageView(frameImg);
-            frameView.setFitWidth(100);
-            frameView.setFitHeight(100);
-            frameView.setPreserveRatio(true);
-            frameView.setClip(new Circle(50, 50, 50));
-            avatarStack.getChildren().add(frameView);
+            profileAvatarView = new ImageView(rawAvatarImg);
+            profileAvatarView.setFitWidth(100);
+            profileAvatarView.setFitHeight(100);
+            profileAvatarView.setPreserveRatio(false);
+            avatarStack.getChildren().add(profileAvatarView);
         }
 
         // Username & Account ID
-        Label nameLabel = new Label(currentUsername);
-        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
-        nameLabel.setTextFill(Color.WHITE);
+        profileNameLabel = new Label(currentUsername);
+        profileNameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
+        profileNameLabel.setTextFill(Color.WHITE);
 
         Label idLabel = new Label(userId == null ? "User ID: chưa xác định" : "User ID: " + userId);
         idLabel.setFont(Font.font("Arial", FontWeight.BOLD, 15));
@@ -173,7 +167,7 @@ public class ProfileHistoryView extends BorderPane {
         statusText.setTextFill(Color.LIGHTGREEN);
         statusBox.getChildren().addAll(statusDot, statusText);
 
-        VBox infoBox = new VBox(4, nameLabel, idLabel, copyIdButton, statusBox);
+        VBox infoBox = new VBox(4, profileNameLabel, idLabel, copyIdButton, statusBox);
         infoBox.setAlignment(Pos.CENTER);
 
         avatarFrameBox.getChildren().addAll(avatarStack, infoBox);
@@ -257,7 +251,7 @@ public class ProfileHistoryView extends BorderPane {
         rankIcon.setFont(Font.font("Arial", 26));
 
         VBox rankSub = new VBox(2);
-        Label rankHeader = new Label("XẾP HẠNG THÁCH ĐẤU");
+        Label rankHeader = new Label("XẾP HẠNG TIỀN THẮNG");
         rankHeader.setFont(Font.font("Arial", FontWeight.BOLD, 10));
         rankHeader.setTextFill(Color.web("#ec4899"));
 
@@ -281,7 +275,7 @@ public class ProfileHistoryView extends BorderPane {
         VBox card3 = createStatCard("❌ Trận thua", "60", "#ef4444");
         VBox card4 = createStatCard("📈 Tỷ lệ thắng", "53.1%", "#f59e0b");
         VBox card5 = createStatCard("⏱️ Thời gian chơi", "48h 30m", "#8b5cf6");
-        VBox card6 = createStatCard("⭐ Ranking Points", "1,450 pts", "#ec4899");
+        VBox card6 = createStatCard("💰 Tiền thắng tích lũy", "$1,450", "#ec4899");
 
         statsGrid.add(card1, 0, 0);
         statsGrid.add(card2, 1, 0);
@@ -520,33 +514,76 @@ public class ProfileHistoryView extends BorderPane {
 
         HBox avatarGrid = new HBox(12);
         avatarGrid.setAlignment(Pos.CENTER);
+        final String[] selectedAvatar = {avatarFile()};
 
         for (int i = 1; i <= 6; i++) {
-            Image img = AssetLoader.getAvatarImage("avatar_player_" + i + ".png");
+            String fileName = "avatar_player_" + i + ".png";
+            Image img = AssetLoader.getAvatarImage(fileName);
             if (img != null) {
                 ImageView view = new ImageView(img);
                 view.setFitWidth(55);
                 view.setFitHeight(55);
-                view.setPreserveRatio(true);
+                view.setPreserveRatio(false);
                 view.setCursor(javafx.scene.Cursor.HAND);
-                view.setClip(new Circle(27.5, 27.5, 27.5));
-                avatarGrid.getChildren().add(view);
+                StackPane option = new StackPane(view);
+                option.setPadding(new Insets(3));
+                option.setStyle(fileName.equals(selectedAvatar[0])
+                        ? "-fx-border-color: #facc15; -fx-border-width: 3; -fx-border-radius: 8;"
+                        : "-fx-border-color: transparent; -fx-border-width: 3;");
+                option.setOnMouseClicked(event -> {
+                    selectedAvatar[0] = fileName;
+                    for (javafx.scene.Node item : avatarGrid.getChildren()) {
+                        item.setStyle(item == option
+                                ? "-fx-border-color: #facc15; -fx-border-width: 3; -fx-border-radius: 8;"
+                                : "-fx-border-color: transparent; -fx-border-width: 3;");
+                    }
+                });
+                avatarGrid.getChildren().add(option);
             }
         }
 
+        Label saveStatus = new Label();
+        saveStatus.setTextFill(Color.web("#ffb4a9"));
+        saveStatus.setWrapText(true);
         Button btnSave = new Button("💾 LƯU THAY ĐỔI");
         btnSave.setMaxWidth(Double.MAX_VALUE);
         btnSave.setPrefHeight(45);
         OrnateUi.button(btnSave, "button-blue.png", 15);
         btnSave.setOnAction(e -> {
-            if (!txtName.getText().trim().isEmpty()) {
-                this.currentUsername = txtName.getText().trim();
-                if (onlineMode && onlineNameChange != null) onlineNameChange.accept(this.currentUsername);
+            String name = txtName.getText().trim();
+            if (name.isEmpty() || name.length() > 100) {
+                saveStatus.setText("Tên hiển thị phải có từ 1 đến 100 ký tự.");
+                return;
             }
-            dialog.close();
+            if (!onlineMode || onlineProfileChange == null) {
+                currentUsername = name;
+                currentAvatar = selectedAvatar[0];
+                dialog.close();
+                return;
+            }
+            btnSave.setDisable(true);
+            saveStatus.setText("Đang lưu...");
+            onlineProfileChange.apply(name, selectedAvatar[0]).whenComplete((ignored, failure) ->
+                    javafx.application.Platform.runLater(() -> {
+                        btnSave.setDisable(false);
+                        if (failure != null) {
+                            Throwable cause = failure;
+                            while (cause.getCause() != null) cause = cause.getCause();
+                            saveStatus.setText("Lưu thất bại: " + cause.getMessage());
+                        } else {
+                            currentUsername = name;
+                            currentAvatar = selectedAvatar[0];
+                            saveStatus.setTextFill(Color.web("#80f2a4"));
+                            saveStatus.setText("ĐÃ LƯU AVATAR VÀ HỒ SƠ");
+                            javafx.animation.PauseTransition savedNotice = new javafx.animation.PauseTransition(
+                                    javafx.util.Duration.seconds(1.4));
+                            savedNotice.setOnFinished(done -> dialog.close());
+                            savedNotice.play();
+                        }
+                    }));
         });
 
-        editCard.getChildren().addAll(lblName, txtName, avatarLabel, avatarGrid, btnSave);
+        editCard.getChildren().addAll(lblName, txtName, avatarLabel, avatarGrid, btnSave, saveStatus);
 
         VBox centerBox = new VBox(editCard);
         centerBox.setAlignment(Pos.CENTER);
@@ -558,6 +595,20 @@ public class ProfileHistoryView extends BorderPane {
         V2Theme.apply(scene);
         dialog.setScene(scene);
         dialog.showAndWait();
+    }
+
+    private String avatarFile() {
+        if (currentAvatar != null && currentAvatar.matches("avatar_player_[1-6]\\.png")) return currentAvatar;
+        return "avatar_player_" + (Math.floorMod(currentUsername.hashCode(), 6) + 1) + ".png";
+    }
+
+    public void showOnlineIdentity(String displayName, String avatarUrl) {
+        if (displayName != null && !displayName.isBlank()) {
+            currentUsername = displayName;
+            profileNameLabel.setText(displayName);
+        }
+        currentAvatar = avatarUrl;
+        if (profileAvatarView != null) profileAvatarView.setImage(AssetLoader.getAvatarImage(avatarFile()));
     }
 
     public static class MatchModel {

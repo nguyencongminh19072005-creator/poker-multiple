@@ -227,31 +227,15 @@ public final class GameOperations {
             throw new IllegalArgumentException("Bạn chưa vào phòng này");
         }
         synchronized (lockFor(hand.roomId)) {
-            if (!hand.active) {
-                UUID currentId = byRoom.get(hand.roomId);
-                if (currentId != null && !currentId.equals(gameId)) {
-                    leave(currentId, userId);
-                    return;
-                }
-            }
-            PokerPlayer player = hand.state.players().stream()
-                    .filter(item -> item.userId() == userId).findFirst().orElse(null);
-            if (player == null || !hand.active) {
-                rooms.leave(hand.roomId, userId);
-                hand.members.remove(userId);
+            if (hand.active)
+                throw new IllegalArgumentException("Không thể rời phòng khi ván đang diễn ra");
+            UUID currentId = byRoom.get(hand.roomId);
+            if (currentId != null && !currentId.equals(gameId)) {
+                leave(currentId, userId);
                 return;
             }
-            if (player.isLeaving()) return;
-            if (Long.valueOf(userId).equals(hand.state.currentTurnUserId())) {
-                hand.engine.actAutomaticAction(hand.state, hand.round,
-                        BettingAction.fold(userId, hand.state.turnId()), hand.deck);
-            }
-            player.markLeaving();
-            hand.leaving.add(userId);
-            if (hand.state.players().stream().filter(PokerPlayer::isEligibleToWin).count() == 1
-                    && hand.state.phase() != GamePhase.FINISHED) hand.state.finishByFolds();
-            hand.settleIfComplete();
-            hand.syncTurnDeadline();
+            rooms.leave(hand.roomId, userId);
+            hand.members.remove(userId);
         }
     }
 
@@ -393,7 +377,6 @@ public final class GameOperations {
         final Set<Long> members;
         final Map<Long, Long> startingChips;
         final Map<Long, String> lastAction = new HashMap<>();
-        final Set<Long> leaving = new HashSet<>();
         final Set<String> acceptedActions = new HashSet<>();
         volatile boolean active = true;
         UUID timedTurnId;
@@ -456,7 +439,6 @@ public final class GameOperations {
                     result == null ? Map.of() : result.payouts());
             active = false;
             byRoom.remove(roomId);
-            for (long userId : leaving) rooms.leave(roomId, userId);
             UUID olderFinishedId = lastFinishedByRoom.put(roomId, state.gameId());
             if (olderFinishedId != null) byId.remove(olderFinishedId);
             nextHandAtNanos.put(roomId, System.nanoTime() + TimeUnit.SECONDS.toNanos(5));

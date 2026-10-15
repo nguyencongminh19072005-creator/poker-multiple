@@ -322,6 +322,11 @@ public class PlayerNode extends VBox {
                 + ";-fx-font-size:9px;-fx-font-weight:900;");
     }
 
+    public void setPendingNextHand() {
+        stateBadge.setText("VÁN KẾ TIẾP");
+        stateBadge.setStyle("-fx-text-fill:#52df82;-fx-font-size:9px;-fx-font-weight:900;");
+    }
+
     public void updateOnline(boolean occupied, long chips, long currentBet, String participation, boolean connected,
                              boolean isTurn, List<Card> ownCards, boolean showBacks,
                              boolean host, String role) {

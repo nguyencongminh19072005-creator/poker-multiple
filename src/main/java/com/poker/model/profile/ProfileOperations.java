@@ -26,8 +26,11 @@ public final class ProfileOperations {
     public Optional<User> find(long userId) throws SQLException { return users.findById(userId); }
 
     public void update(long userId, String displayName, String avatarUrl) throws SQLException {
-        String name = displayName.trim();
+        String name = displayName == null ? "" : displayName.trim();
         if (name.isBlank()) throw new IllegalArgumentException("Tên hiển thị không được để trống");
+        if (name.length() > 100) throw new IllegalArgumentException("Tên hiển thị tối đa 100 ký tự");
+        if (avatarUrl != null && !avatarUrl.matches("avatar_player_[1-6]\\.png"))
+            throw new IllegalArgumentException("Avatar không hợp lệ");
         profiles.update(userId, name, avatarUrl);
     }
 

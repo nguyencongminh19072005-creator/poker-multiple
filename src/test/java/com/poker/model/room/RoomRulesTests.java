@@ -7,10 +7,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RoomRulesTests {
     @Test
-    void spectatorCanEnterPlayingRoomButPlayerCannot() {
-        assertThatCode(() -> RoomAdmissionRules.requireOpen("PLAYING", true))
+    void playersCanReserveSeatsDuringAnActiveHand() {
+        assertThatCode(() -> RoomAdmissionRules.requireOpen("WAITING"))
                 .doesNotThrowAnyException();
-        assertThatThrownBy(() -> RoomAdmissionRules.requireOpen("PLAYING", false))
+        assertThatCode(() -> RoomAdmissionRules.requireOpen("PLAYING"))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> RoomAdmissionRules.requireOpen("CLOSED"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

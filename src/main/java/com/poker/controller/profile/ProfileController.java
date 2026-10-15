@@ -17,4 +17,7 @@ public final class ProfileController {
     public CompletableFuture<JsonObject> ranking() { return api.request("GET", "/api/v1/rankings/me", null); }
     public CompletableFuture<JsonObject> history() { return api.request("GET", "/api/v1/me/history", null); }
     public CompletableFuture<JsonObject> updateDisplayName(String name) { return api.updateDisplayName(name); }
+    public CompletableFuture<JsonObject> updateProfile(String name, String avatarUrl) {
+        return api.updateProfile(name, avatarUrl);
+    }
 }
