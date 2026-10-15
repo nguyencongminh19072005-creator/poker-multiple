@@ -12,6 +12,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 /** The room feature's layout; state and networking remain in RoomScreens. */
@@ -25,7 +26,7 @@ public final class PokerRoomView extends BorderPane {
     private final Button start = new Button("BẮT ĐẦU VÁN");
     private final Button leave = new Button("RỜI PHÒNG");
     private final HBox waitingBar = new HBox(12);
-    private final BorderPane tableLayer = new BorderPane();
+    private final StackPane tableLayer = new StackPane();
     private final VBox center = new VBox(4);
     private final RoomChatPanel chat = new RoomChatPanel();
     private final ControlPanelView actions = new ControlPanelView();
@@ -53,15 +54,11 @@ public final class PokerRoomView extends BorderPane {
         center.setPadding(new Insets(6, 10, 4, 10));
         center.setStyle("-fx-background-color:radial-gradient(center 45% 45%, radius 80%, #234537, #131c18);");
         tableLayer.setMinSize(0, 0);
-        Region chatSpacer = new Region();
-        VBox.setVgrow(chatSpacer, Priority.ALWAYS);
-        VBox chatDock = new VBox(chatSpacer, chat);
-        chatDock.setAlignment(Pos.BOTTOM_RIGHT);
-        chatDock.setPadding(new Insets(0, 12, 14, 0));
-        chatDock.setPrefWidth(252);
-        chatDock.setMaxWidth(252);
-        chatDock.setPickOnBounds(false);
-        tableLayer.setRight(chatDock);
+        // Center the table across the whole room; the compact chat floats in
+        // the bottom-left margin instead of reserving a right-hand column.
+        StackPane.setAlignment(chat, Pos.BOTTOM_LEFT);
+        StackPane.setMargin(chat, new Insets(0, 0, 14, 12));
+        tableLayer.getChildren().add(chat);
         VBox.setVgrow(tableLayer, Priority.ALWAYS);
         center.getChildren().addAll(status, tableLayer);
         setCenter(center);
@@ -79,10 +76,11 @@ public final class PokerRoomView extends BorderPane {
     }
 
     public void setTable(PokerTableContainer replacement) {
+        if (table != null) tableLayer.getChildren().remove(table);
         table = replacement;
         // The table image is transparent outside the rail; let the room-wide felt show through.
         replacement.setStyle("-fx-background-color:transparent;");
-        tableLayer.setCenter(replacement);
+        tableLayer.getChildren().add(0, replacement);
         replacement.setOnMousePressed(event -> actions.hideRaisePanel());
     }
 

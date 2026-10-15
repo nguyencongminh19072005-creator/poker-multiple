@@ -18,7 +18,7 @@ nhúng vào PNG. Không xóa tài nguyên chỉ vì tên thư mục có chữ `r
 | Chip, pot | `reference-v2/chips/chip-{1,5,25,100,500,1000}.png` | Cược gần ghế, pot giữa bàn, số dư ở lobby/profile |
 | Card / back-card | `reference-v2/cards/card fronts/` (52 lá), `card backs/card back {red,blue}.png` | Bài chung, bài của mình, bài úp của đối thủ |
 | Avatar, ghế | `reference-v2/avatars/avatar_player_1..6.png`, `reference-v2/pack/ornate/player-seat.png` | Ghế người chơi |
-| Bàn, nền, dealer nữ | `reference-v2/table/poker-table-v2.png`, `reference-v2/backgrounds/casino.png`, `reference-v2/dealer/female-dealer.png` | Bàn và hậu cảnh |
+| Bàn, nền, dealer nữ | `reference-v2/table/poker-table-notched.png` (fallback: `poker-table-v2.png`), `reference-v2/backgrounds/casino.png`, `reference-v2/dealer/female-dealer-idle.gif` (fallback: `female-dealer.png`) | Dealer đứng ở mép lõm phía trên; ảnh ngồi được giữ nhưng không sử dụng |
 | Khung chat | `reference-v2/pack/ornate/chat-panel.png` | Panel chat |
 
 ## Ảnh trùng và ảnh chưa dùng: chỉ kiểm kê, không xóa

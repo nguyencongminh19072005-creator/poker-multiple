@@ -58,11 +58,15 @@ public class AssetLoader {
     }
 
     public static Image getTableImage() {
-        return loadImageSized("reference-v2/table/poker-table-v2.png", 1000, 650);
+        Image notched = loadImageSized("reference-v2/table/poker-table-notched.png", 1000, 650);
+        return notched != null && !notched.isError()
+                ? notched : loadImageSized("reference-v2/table/poker-table-v2.png", 1000, 650);
     }
 
     public static Image getFemaleDealerImage() {
-        return loadImageSized("reference-v2/dealer/female-dealer.png", 260, 390);
+        Image animated = loadImageSized("reference-v2/dealer/female-dealer-idle.gif", 260, 390);
+        return animated != null && !animated.isError()
+                ? animated : loadImageSized("reference-v2/dealer/female-dealer.png", 260, 390);
     }
 
     public static Image getBackgroundImage() {

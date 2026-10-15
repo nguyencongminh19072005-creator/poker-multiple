@@ -22,7 +22,7 @@ public final class RoomChatPanel extends StackPane {
     private final VBox messages = new VBox(7);
     private final ScrollPane history = new ScrollPane(messages);
     private final TextField input = new TextField();
-    private final Button collapsedTab = new Button("<");
+    private final Button collapsedTab = new Button(">");
     private Runnable onSend = () -> { };
     private boolean open = true;
     private TranslateTransition transition;
@@ -42,7 +42,7 @@ public final class RoomChatPanel extends StackPane {
 
         Label title = new Label("CHAT PHÒNG");
         title.setStyle("-fx-text-fill:#f6dc9c;-fx-font-weight:900;-fx-font-size:13px;");
-        Button collapse = new Button(">");
+        Button collapse = new Button("<");
         OrnateUi.button(collapse, "button-blue.png", 13);
         collapse.setOnAction(event -> collapse());
         HBox header = new HBox(8, title, collapse);
@@ -70,8 +70,8 @@ public final class RoomChatPanel extends StackPane {
         collapsedTab.setOnAction(event -> expand());
         collapsedTab.setVisible(false);
         collapsedTab.setManaged(false);
-        StackPane.setAlignment(panel, Pos.BOTTOM_RIGHT);
-        StackPane.setAlignment(collapsedTab, Pos.BOTTOM_RIGHT);
+        StackPane.setAlignment(panel, Pos.BOTTOM_LEFT);
+        StackPane.setAlignment(collapsedTab, Pos.BOTTOM_LEFT);
         getChildren().addAll(panel, collapsedTab);
     }
 
@@ -106,10 +106,10 @@ public final class RoomChatPanel extends StackPane {
             collapsedTab.setManaged(false);
             panel.setVisible(true);
             panel.setManaged(true);
-            panel.setTranslateX(WIDTH);
+            panel.setTranslateX(-WIDTH);
         }
         transition = new TranslateTransition(Duration.millis(240), panel);
-        transition.setToX(opening ? 0 : WIDTH);
+        transition.setToX(opening ? 0 : -WIDTH);
         transition.setOnFinished(event -> {
             if (!opening) {
                 panel.setVisible(false);
