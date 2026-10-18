@@ -18,14 +18,21 @@ public class LobbyView extends BorderPane {
 
     public interface LobbyActions {
         void onJoinRoom(String roomId, boolean isPrivate, boolean isSpectator);
+
         default void onJoinPrivateRoom(String roomId, String password, boolean isSpectator) {
             onJoinRoom(roomId, true, isSpectator);
         }
+
         void onCreateRoomRequested();
+
         void onOpenLeaderboard();
+
         void onOpenProfile();
+
         void onOpenFriends();
+
         void onOpenAdmin();
+
         void onLogout();
     }
 
@@ -50,7 +57,7 @@ public class LobbyView extends BorderPane {
     }
 
     public LobbyView(String username, LobbyActions actions, boolean onlineMode,
-                     String avatarUrl, boolean adminUser) {
+            String avatarUrl, boolean adminUser) {
         this.currentUsername = username;
         this.avatarUrl = avatarUrl;
         this.adminUser = adminUser;
@@ -66,7 +73,7 @@ public class LobbyView extends BorderPane {
             BackgroundFill tint = new BackgroundFill(
                     Color.rgb(4, 11, 15, 0.34), CornerRadii.EMPTY, Insets.EMPTY);
             this.setBackground(new Background(
-                    new BackgroundFill[]{tint}, new BackgroundImage[]{myBI}));
+                    new BackgroundFill[] { tint }, new BackgroundImage[] { myBI }));
         } else {
             this.setStyle("-fx-background-color: #07090e;");
         }
@@ -90,11 +97,13 @@ public class LobbyView extends BorderPane {
 
         // --- Top-Left: Player Profile Avatar with Gold Frame Asset ---
         String avatarFile = avatarUrl != null && avatarUrl.matches("avatar_player_[1-6]\\.png")
-                ? avatarUrl : "avatar_player_" + (Math.floorMod(currentUsername.hashCode(), 6) + 1) + ".png";
+                ? avatarUrl
+                : "avatar_player_" + (Math.floorMod(currentUsername.hashCode(), 6) + 1) + ".png";
         Image rawAvatarImg = AssetLoader.getAvatarImage(avatarFile);
 
         // The portrait opening in the 250x90 player-seat artwork is centered at x=49.
-        // Keep the avatar box fixed so its center stays on that opening when the bar resizes.
+        // Keep the avatar box fixed so its center stays on that opening when the bar
+        // resizes.
         StackPane avatarStack = new StackPane();
         avatarStack.setMinSize(70, 70);
         avatarStack.setPrefSize(70, 70);
@@ -240,10 +249,14 @@ public class LobbyView extends BorderPane {
         // Populate Initial Active Rooms for data model
         allRooms = javafx.collections.FXCollections.observableArrayList();
         if (!onlineMode) {
-            allRooms.add(new RoomModel("#101", "High Rollers VIP", "PokerKing", "4/6", "$500/$1.000", "$100.000", "Public", "Playing"));
-            allRooms.add(new RoomModel("#102", "Beginners Table", "LuckyCat", "2/6", "$10/$20", "$2.000", "Public", "Waiting"));
-            allRooms.add(new RoomModel("#103", "Private Club #7", "ShadowPlayer", "5/6", "$100/$200", "$20.000", "Private", "Waiting"));
-            allRooms.add(new RoomModel("#104", "Pro Tournament", "AceSpade", "6/6", "$250/$500", "$50.000", "Public", "Full"));
+            allRooms.add(new RoomModel("#101", "High Rollers VIP", "PokerKing", "4/6", "$500/$1.000", "$100.000",
+                    "Public", "Playing"));
+            allRooms.add(new RoomModel("#102", "Beginners Table", "LuckyCat", "2/6", "$10/$20", "$2.000", "Public",
+                    "Waiting"));
+            allRooms.add(new RoomModel("#103", "Private Club #7", "ShadowPlayer", "5/6", "$100/$200", "$20.000",
+                    "Private", "Waiting"));
+            allRooms.add(new RoomModel("#104", "Pro Tournament", "AceSpade", "6/6", "$250/$500", "$50.000", "Public",
+                    "Full"));
         }
         filteredRooms = new javafx.collections.transformation.FilteredList<>(allRooms, p -> true);
 
@@ -274,7 +287,8 @@ public class LobbyView extends BorderPane {
         roomsHeading.setMaxWidth(Double.MAX_VALUE);
         roomsHeading.setPrefHeight(32);
         roomsHeading.setAlignment(Pos.CENTER);
-        roomsHeading.setStyle("-fx-text-fill: #f2d391; -fx-font-family: 'Segoe UI'; -fx-font-size: 17px; -fx-font-weight: 900;");
+        roomsHeading.setStyle(
+                "-fx-text-fill: #f2d391; -fx-font-family: 'Segoe UI'; -fx-font-size: 17px; -fx-font-weight: 900;");
         VBox roomPanel = new VBox(10, roomsHeading, roomCards);
         roomPanel.setPrefWidth(650);
         roomPanel.setPadding(new Insets(17, 30, 26, 30));
@@ -348,7 +362,7 @@ public class LobbyView extends BorderPane {
         Stage dialog = new Stage();
         dialog.initStyle(StageStyle.UNDECORATED);
         dialog.setTitle("🎴 DANH SÁCH PHÒNG POKER");
-        
+
         javafx.stage.Window owner = this.getScene() != null ? this.getScene().getWindow() : null;
         if (owner != null) {
             dialog.initOwner(owner);
@@ -382,10 +396,12 @@ public class LobbyView extends BorderPane {
         btnBack.setFont(Font.font("Segoe UI", FontWeight.BOLD, 13));
         btnBack.setStyle("-fx-background-color: linear-gradient(to right, #1e293b, #334155); " +
                 "-fx-text-fill: white; -fx-border-color: #3b82f6; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 8 16 8 16;");
-        btnBack.setOnMouseEntered(e -> btnBack.setStyle("-fx-background-color: linear-gradient(to right, #2563eb, #3b82f6); " +
-                "-fx-text-fill: white; -fx-border-color: #60a5fa; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 8 16 8 16;"));
-        btnBack.setOnMouseExited(e -> btnBack.setStyle("-fx-background-color: linear-gradient(to right, #1e293b, #334155); " +
-                "-fx-text-fill: white; -fx-border-color: #3b82f6; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 8 16 8 16;"));
+        btnBack.setOnMouseEntered(
+                e -> btnBack.setStyle("-fx-background-color: linear-gradient(to right, #2563eb, #3b82f6); " +
+                        "-fx-text-fill: white; -fx-border-color: #60a5fa; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 8 16 8 16;"));
+        btnBack.setOnMouseExited(
+                e -> btnBack.setStyle("-fx-background-color: linear-gradient(to right, #1e293b, #334155); " +
+                        "-fx-text-fill: white; -fx-border-color: #3b82f6; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 8 16 8 16;"));
         btnBack.setOnAction(e -> dialog.close());
 
         Label dialogTitle = new Label("🎴 DANH SÁCH BÀN CHƠI POKER");
@@ -415,16 +431,20 @@ public class LobbyView extends BorderPane {
         btnQuickPlay.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
         btnQuickPlay.setStyle("-fx-background-color: radial-gradient(center 50% 50%, radius 60%, #34d399, #059669); " +
                 "-fx-text-fill: white; -fx-background-radius: 100; " +
-                "-fx-border-color: linear-gradient(to bottom right, #facc15, #ca8a04); -fx-border-radius: 100; -fx-border-width: 4; " +
+                "-fx-border-color: linear-gradient(to bottom right, #facc15, #ca8a04); -fx-border-radius: 100; -fx-border-width: 4; "
+                +
                 "-fx-effect: dropshadow(three-pass-box, rgba(34, 197, 94, 0.6), 18, 0, 0, 4); -fx-cursor: hand;");
-        btnQuickPlay.setOnMouseEntered(e -> btnQuickPlay.setStyle("-fx-background-color: radial-gradient(center 50% 50%, radius 60%, #4ade80, #10b981); " +
-                "-fx-text-fill: white; -fx-background-radius: 100; " +
-                "-fx-border-color: #fde047; -fx-border-radius: 100; -fx-border-width: 4; " +
-                "-fx-effect: dropshadow(three-pass-box, rgba(74, 222, 128, 0.95), 22, 0, 0, 4); -fx-cursor: hand;"));
-        btnQuickPlay.setOnMouseExited(e -> btnQuickPlay.setStyle("-fx-background-color: radial-gradient(center 50% 50%, radius 60%, #34d399, #059669); " +
-                "-fx-text-fill: white; -fx-background-radius: 100; " +
-                "-fx-border-color: linear-gradient(to bottom right, #facc15, #ca8a04); -fx-border-radius: 100; -fx-border-width: 4; " +
-                "-fx-effect: dropshadow(three-pass-box, rgba(34, 197, 94, 0.6), 18, 0, 0, 4); -fx-cursor: hand;"));
+        btnQuickPlay.setOnMouseEntered(e -> btnQuickPlay
+                .setStyle("-fx-background-color: radial-gradient(center 50% 50%, radius 60%, #4ade80, #10b981); " +
+                        "-fx-text-fill: white; -fx-background-radius: 100; " +
+                        "-fx-border-color: #fde047; -fx-border-radius: 100; -fx-border-width: 4; " +
+                        "-fx-effect: dropshadow(three-pass-box, rgba(74, 222, 128, 0.95), 22, 0, 0, 4); -fx-cursor: hand;"));
+        btnQuickPlay.setOnMouseExited(e -> btnQuickPlay
+                .setStyle("-fx-background-color: radial-gradient(center 50% 50%, radius 60%, #34d399, #059669); " +
+                        "-fx-text-fill: white; -fx-background-radius: 100; " +
+                        "-fx-border-color: linear-gradient(to bottom right, #facc15, #ca8a04); -fx-border-radius: 100; -fx-border-width: 4; "
+                        +
+                        "-fx-effect: dropshadow(three-pass-box, rgba(34, 197, 94, 0.6), 18, 0, 0, 4); -fx-cursor: hand;"));
         btnQuickPlay.setOnAction(e -> {
             RoomModel firstPublic = filteredRooms.stream()
                     .filter(room -> "Public".equalsIgnoreCase(room.getType()) &&
@@ -453,14 +473,16 @@ public class LobbyView extends BorderPane {
         comboMoneyFilter.getItems().addAll("Tất cả", "$2k+", "$10k+", "$50k+");
         comboMoneyFilter.setValue("Tất cả");
         comboMoneyFilter.setMaxWidth(Double.MAX_VALUE);
-        comboMoneyFilter.setStyle("-fx-background-color: #0f172a; -fx-text-fill: #facc15; -fx-font-weight: bold; -fx-font-size: 14px;");
+        comboMoneyFilter.setStyle(
+                "-fx-background-color: #0f172a; -fx-text-fill: #facc15; -fx-font-weight: bold; -fx-font-size: 14px;");
 
         moneyFilterBox.getChildren().addAll(lblMoneyTitle, comboMoneyFilter);
 
         // Search Field
         TextField searchField = new TextField();
         searchField.setPromptText("🔍 Tìm tên/ID phòng...");
-        searchField.setStyle("-fx-font-size: 13px; -fx-background-color: #0f172a; -fx-text-fill: white; -fx-padding: 8; -fx-border-color: #334155; -fx-border-radius: 6; -fx-background-radius: 6;");
+        searchField.setStyle(
+                "-fx-font-size: 13px; -fx-background-color: #0f172a; -fx-text-fill: white; -fx-padding: 8; -fx-border-color: #334155; -fx-border-radius: 6; -fx-background-radius: 6;");
 
         Region sidebarSpacer = new Region();
         VBox.setVgrow(sidebarSpacer, Priority.ALWAYS);
@@ -560,8 +582,10 @@ public class LobbyView extends BorderPane {
             applyTableFilters(searchField, comboMoneyFilter, "WAITING");
         });
 
-        searchField.textProperty().addListener((obs, oldV, newV) -> applyTableFilters(searchField, comboMoneyFilter, "ALL"));
-        comboMoneyFilter.valueProperty().addListener((obs, oldV, newV) -> applyTableFilters(searchField, comboMoneyFilter, "ALL"));
+        searchField.textProperty()
+                .addListener((obs, oldV, newV) -> applyTableFilters(searchField, comboMoneyFilter, "ALL"));
+        comboMoneyFilter.valueProperty()
+                .addListener((obs, oldV, newV) -> applyTableFilters(searchField, comboMoneyFilter, "ALL"));
 
         ScrollPane scrollTable = new ScrollPane(rowsBox);
         scrollTable.setFitToWidth(true);
@@ -620,13 +644,14 @@ public class LobbyView extends BorderPane {
         boolean isPrivate = "Private".equalsIgnoreCase(room.getType());
 
         Button btnDetail = new Button("Chi tiết");
-        btnDetail.setStyle("-fx-background-color: #1e293b; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 6; -fx-cursor: hand; -fx-padding: 6 10;");
+        btnDetail.setStyle(
+                "-fx-background-color: #1e293b; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 6; -fx-cursor: hand; -fx-padding: 6 10;");
         btnDetail.setOnAction(e -> showRoomDetailDialog(dialog, room));
 
         Button btnJoinRow = new Button(isPrivate ? "MẬT KHẨU" : "VÀO BÀN");
-        btnJoinRow.setStyle(isPrivate ?
-                "-fx-background-color: linear-gradient(to right, #b45309, #d97706); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px; -fx-background-radius: 6; -fx-cursor: hand;" :
-                "-fx-background-color: linear-gradient(to right, #059669, #10b981); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnJoinRow.setStyle(isPrivate
+                ? "-fx-background-color: linear-gradient(to right, #b45309, #d97706); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px; -fx-background-radius: 6; -fx-cursor: hand;"
+                : "-fx-background-color: linear-gradient(to right, #059669, #10b981); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px; -fx-background-radius: 6; -fx-cursor: hand;");
         btnJoinRow.setOnAction(e -> {
             if (isPrivate) {
                 showJoinPrivateRoomDialog(dialog, room);
@@ -637,7 +662,8 @@ public class LobbyView extends BorderPane {
         });
 
         row.setOnMouseClicked(e -> {
-            if (e.getTarget() == btnDetail) return;
+            if (e.getTarget() == btnDetail)
+                return;
             if (isPrivate) {
                 showJoinPrivateRoomDialog(dialog, room);
             } else {
@@ -657,7 +683,8 @@ public class LobbyView extends BorderPane {
         Stage modal = new Stage();
         modal.initStyle(StageStyle.UNDECORATED);
         modal.initModality(Modality.APPLICATION_MODAL);
-        if (owner != null) modal.initOwner(owner);
+        if (owner != null)
+            modal.initOwner(owner);
 
         VBox content = new VBox(14);
         content.setAlignment(Pos.CENTER);
@@ -683,7 +710,8 @@ public class LobbyView extends BorderPane {
         passField.setPromptText("Nhập mật khẩu phòng...");
         passField.setPrefWidth(280);
         passField.setPrefHeight(40);
-        passField.setStyle("-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: #ffffff; -fx-border-color: #ca8a04; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 0 12;");
+        passField.setStyle(
+                "-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: #ffffff; -fx-border-color: #ca8a04; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 0 12;");
 
         Label errorLbl = new Label();
         errorLbl.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 11px;");
@@ -699,7 +727,8 @@ public class LobbyView extends BorderPane {
                 return;
             }
             modal.close();
-            if (owner != null) owner.close();
+            if (owner != null)
+                owner.close();
             actions.onJoinPrivateRoom(room.getId(), passField.getText(), false);
         });
 
@@ -722,7 +751,8 @@ public class LobbyView extends BorderPane {
         Stage modal = new Stage();
         modal.initStyle(StageStyle.UNDECORATED);
         modal.initModality(Modality.APPLICATION_MODAL);
-        if (owner != null) modal.initOwner(owner);
+        if (owner != null)
+            modal.initOwner(owner);
 
         VBox content = new VBox(14);
         content.setAlignment(Pos.CENTER);
@@ -752,8 +782,7 @@ public class LobbyView extends BorderPane {
                 createDetailRow("Số người:", room.playersProperty().get()),
                 createDetailRow("Mức Blinds:", room.blindsProperty().get()),
                 createDetailRow("Buy-in:", room.buyInProperty().get()),
-                createDetailRow("Loại bàn:", room.getType())
-        );
+                createDetailRow("Loại bàn:", room.getType()));
 
         HBox btns = new HBox(12);
         btns.setAlignment(Pos.CENTER);
@@ -762,7 +791,8 @@ public class LobbyView extends BorderPane {
         OrnateUi.button(btnJoin, "button-blue.png", 13);
         btnJoin.setOnAction(e -> {
             modal.close();
-            if (owner != null) owner.close();
+            if (owner != null)
+                owner.close();
             actions.onJoinRoom(room.getId(), "Private".equalsIgnoreCase(room.getType()), false);
         });
 
@@ -802,7 +832,8 @@ public class LobbyView extends BorderPane {
                 String[] parts = playersStr.split("/");
                 current = Integer.parseInt(parts[0].trim());
                 max = Integer.parseInt(parts[1].trim());
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
         for (int i = 0; i < max; i++) {
@@ -842,7 +873,8 @@ public class LobbyView extends BorderPane {
                         int current = Integer.parseInt(parts[0].trim());
                         int max = Integer.parseInt(parts[1].trim());
                         matchesTab = current < max;
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             } else if ("WAITING".equalsIgnoreCase(tabMode)) {
                 matchesTab = "Waiting".equalsIgnoreCase(room.getStatus());
@@ -867,7 +899,8 @@ public class LobbyView extends BorderPane {
     }
 
     public void showOnlineRooms(java.util.List<RoomModel> rooms, long accountChips, long seatedPlayers) {
-        if (!onlineMode) return;
+        if (!onlineMode)
+            return;
         allRooms.setAll(rooms);
         balanceLabel.setText("$" + String.format("%,d", accountChips));
         onlineValue.setText(Long.toString(seatedPlayers));
@@ -884,7 +917,8 @@ public class LobbyView extends BorderPane {
         private final javafx.beans.property.StringProperty type;
         private final javafx.beans.property.StringProperty status;
 
-        public RoomModel(String id, String name, String host, String players, String blinds, String buyIn, String type, String status) {
+        public RoomModel(String id, String name, String host, String players, String blinds, String buyIn, String type,
+                String status) {
             this.id = new javafx.beans.property.SimpleStringProperty(id);
             this.name = new javafx.beans.property.SimpleStringProperty(name);
             this.host = new javafx.beans.property.SimpleStringProperty(host);
@@ -895,20 +929,60 @@ public class LobbyView extends BorderPane {
             this.status = new javafx.beans.property.SimpleStringProperty(status);
         }
 
-        public javafx.beans.property.StringProperty idProperty() { return id; }
-        public javafx.beans.property.StringProperty nameProperty() { return name; }
-        public javafx.beans.property.StringProperty hostProperty() { return host; }
-        public javafx.beans.property.StringProperty playersProperty() { return players; }
-        public javafx.beans.property.StringProperty blindsProperty() { return blinds; }
-        public javafx.beans.property.StringProperty buyInProperty() { return buyIn; }
-        public javafx.beans.property.StringProperty typeProperty() { return type; }
-        public javafx.beans.property.StringProperty statusProperty() { return status; }
+        public javafx.beans.property.StringProperty idProperty() {
+            return id;
+        }
 
-        public String getId() { return id.get(); }
-        public String getName() { return name.get(); }
-        public String getHost() { return host.get(); }
-        public String getBuyIn() { return buyIn.get(); }
-        public String getType() { return type.get(); }
-        public String getStatus() { return status.get(); }
+        public javafx.beans.property.StringProperty nameProperty() {
+            return name;
+        }
+
+        public javafx.beans.property.StringProperty hostProperty() {
+            return host;
+        }
+
+        public javafx.beans.property.StringProperty playersProperty() {
+            return players;
+        }
+
+        public javafx.beans.property.StringProperty blindsProperty() {
+            return blinds;
+        }
+
+        public javafx.beans.property.StringProperty buyInProperty() {
+            return buyIn;
+        }
+
+        public javafx.beans.property.StringProperty typeProperty() {
+            return type;
+        }
+
+        public javafx.beans.property.StringProperty statusProperty() {
+            return status;
+        }
+
+        public String getId() {
+            return id.get();
+        }
+
+        public String getName() {
+            return name.get();
+        }
+
+        public String getHost() {
+            return host.get();
+        }
+
+        public String getBuyIn() {
+            return buyIn.get();
+        }
+
+        public String getType() {
+            return type.get();
+        }
+
+        public String getStatus() {
+            return status.get();
+        }
     }
 }

@@ -60,13 +60,15 @@ public class AssetLoader {
     public static Image getTableImage() {
         Image notched = loadImageSized("reference-v2/table/poker-table-notched.png", 1000, 650);
         return notched != null && !notched.isError()
-                ? notched : loadImageSized("reference-v2/table/poker-table-v2.png", 1000, 650);
+                ? notched
+                : loadImageSized("reference-v2/table/poker-table-v2.png", 1000, 650);
     }
 
     public static Image getFemaleDealerImage() {
         Image animated = loadImageSized("reference-v2/dealer/female-dealer-idle.gif", 260, 390);
         return animated != null && !animated.isError()
-                ? animated : loadImageSized("reference-v2/dealer/female-dealer.png", 260, 390);
+                ? animated
+                : loadImageSized("reference-v2/dealer/female-dealer.png", 260, 390);
     }
 
     public static Image getBackgroundImage() {
@@ -139,7 +141,8 @@ public class AssetLoader {
     }
 
     public static Image getCardImage(Card card) {
-        if (card == null) return getCardBackImage("red");
+        if (card == null)
+            return getCardBackImage("red");
         String path = card.getImageRelativePath().replace("png cards/", "reference-v2/cards/");
         return loadImageSized(path, 130, 190);
     }
@@ -150,8 +153,10 @@ public class AssetLoader {
     }
 
     public static Image getChipImageForValue(int amount) {
-        int denomination = amount >= 1000 ? 1000 : amount >= 500 ? 500 : amount >= 100 ? 100
-                : amount >= 25 ? 25 : amount >= 5 ? 5 : 1;
+        int denomination = amount >= 1000 ? 1000
+                : amount >= 500 ? 500
+                        : amount >= 100 ? 100
+                                : amount >= 25 ? 25 : amount >= 5 ? 5 : 1;
         return loadImageSized("reference-v2/chips/chip-" + denomination + ".png", 128, 128);
     }
 
@@ -160,49 +165,141 @@ public class AssetLoader {
     }
 
     // --- Pages ---
-    public static Image getLobbyPageImage() { return loadImage("pages/lobby.png"); }
-    public static Image getCreateRoomPageImage() { return loadImage("pages/create-room.png"); }
-    public static Image getWaitingRoomPageImage() { return loadImage("pages/waiting-room.png"); }
-    public static Image getPokerGameRoomPageImage() { return loadImage("pages/poker-game-room.png"); }
-    public static Image getSpectatorViewPageImage() { return loadImage("pages/spectator-view.png"); }
-    public static Image getGameResultPageImage() { return null; }
+    public static Image getLobbyPageImage() {
+        return loadImage("pages/lobby.png");
+    }
+
+    public static Image getCreateRoomPageImage() {
+        return loadImage("pages/create-room.png");
+    }
+
+    public static Image getWaitingRoomPageImage() {
+        return loadImage("pages/waiting-room.png");
+    }
+
+    public static Image getPokerGameRoomPageImage() {
+        return loadImage("pages/poker-game-room.png");
+    }
+
+    public static Image getSpectatorViewPageImage() {
+        return loadImage("pages/spectator-view.png");
+    }
+
+    public static Image getGameResultPageImage() {
+        return null;
+    }
 
     // --- Modals / Popup ---
-    public static Image getJoinPrivateRoomModalImage() { return null; }
-    public static Image getRoomDetailModalImage() { return null; }
-    public static Image getConnectionLostModalImage() { return loadImage("modals/connection-lost.png"); }
+    public static Image getJoinPrivateRoomModalImage() {
+        return null;
+    }
+
+    public static Image getRoomDetailModalImage() {
+        return null;
+    }
+
+    public static Image getConnectionLostModalImage() {
+        return loadImage("modals/connection-lost.png");
+    }
 
     // --- Chat ---
-    public static Image getRoomChatImage() { return loadImageSized("reference-v2/pack/ornate/chat-panel.png", 350, 450); }
-    public static Image getInRoomChatImage() { return getRoomChatImage(); }
+    public static Image getRoomChatImage() {
+        return loadImageSized("reference-v2/pack/ornate/chat-panel.png", 350, 450);
+    }
+
+    public static Image getInRoomChatImage() {
+        return getRoomChatImage();
+    }
 
     // --- Poker components ---
-    public static Image getPlayingCardBackImage() { return loadImage("poker-components/playing-card-back.png"); }
-    public static Image getPlayingCardsImage() { return loadImage("poker-components/playing-cards.png"); }
-    public static Image getPokerChipsImage() { return loadImage("poker-components/poker-chips.png"); }
-    public static Image getDealerButtonImage() { return loadImageSized("reference-v2/pack/markers/dealer.png", 48, 48); }
-    public static Image getSmallBlindImage() { return loadImageSized("reference-v2/pack/markers/small-blind.png", 48, 48); }
-    public static Image getBigBlindImage() { return loadImageSized("reference-v2/pack/markers/big-blind.png", 48, 48); }
+    public static Image getPlayingCardBackImage() {
+        return loadImage("poker-components/playing-card-back.png");
+    }
+
+    public static Image getPlayingCardsImage() {
+        return loadImage("poker-components/playing-cards.png");
+    }
+
+    public static Image getPokerChipsImage() {
+        return loadImage("poker-components/poker-chips.png");
+    }
+
+    public static Image getDealerButtonImage() {
+        return loadImageSized("reference-v2/pack/markers/dealer.png", 48, 48);
+    }
+
+    public static Image getSmallBlindImage() {
+        return loadImageSized("reference-v2/pack/markers/small-blind.png", 48, 48);
+    }
+
+    public static Image getBigBlindImage() {
+        return loadImageSized("reference-v2/pack/markers/big-blind.png", 48, 48);
+    }
 
     // --- Player ---
-    public static Image getPlayerSeatImage() { return loadImageSized("reference-v2/pack/ornate/player-seat.png", 320, 105); }
-    public static Image getPlayerAvatarImage() { return getAvatarImage("avatar_player_1.png"); }
-    public static Image getHostCrownImage() { return loadImageSized("reference-v2/pack/icons/crown.png", 64, 64); }
-    public static Image getReadyStatusImage() { return loadImage("player/ready-status.png"); }
-    public static Image getUnreadyStatusImage() { return loadImage("player/unready-status.png"); }
+    public static Image getPlayerSeatImage() {
+        return loadImageSized("reference-v2/pack/ornate/player-seat.png", 320, 105);
+    }
+
+    public static Image getPlayerAvatarImage() {
+        return getAvatarImage("avatar_player_1.png");
+    }
+
+    public static Image getHostCrownImage() {
+        return loadImageSized("reference-v2/pack/icons/crown.png", 64, 64);
+    }
+
+    public static Image getReadyStatusImage() {
+        return loadImage("player/ready-status.png");
+    }
+
+    public static Image getUnreadyStatusImage() {
+        return loadImage("player/unready-status.png");
+    }
 
     // --- Actions ---
-    public static Image getBtnFoldImage() { return null; }
-    public static Image getBtnCheckImage() { return null; }
-    public static Image getBtnCallImage() { return null; }
-    public static Image getBtnRaiseImage() { return null; }
-    public static Image getBtnAllInImage() { return null; }
-    public static Image getBtnAllInFlameImage() { return loadImage("actions/btn-allin-flame.png"); }
+    public static Image getBtnFoldImage() {
+        return null;
+    }
+
+    public static Image getBtnCheckImage() {
+        return null;
+    }
+
+    public static Image getBtnCallImage() {
+        return null;
+    }
+
+    public static Image getBtnRaiseImage() {
+        return null;
+    }
+
+    public static Image getBtnAllInImage() {
+        return null;
+    }
+
+    public static Image getBtnAllInFlameImage() {
+        return loadImage("actions/btn-allin-flame.png");
+    }
 
     // --- Realtime ---
-    public static Image getTimerImage() { return loadImageSized("reference-v2/pack/icons/timer.png", 48, 48); }
-    public static Image getOnlineStatusImage() { return loadImageSized("reference-v2/pack/icons/online.png", 32, 32); }
-    public static Image getReconnectingImage() { return loadImage("realtime/reconnecting.png"); }
-    public static Image getReconnectingWifiImage() { return loadImageSized("reference-v2/pack/icons/wifi-off.png", 64, 64); }
-    public static Image getReconnectingSpinnerImage() { return loadImageSized("reference-v2/pack/icons/timer.png", 64, 64); }
+    public static Image getTimerImage() {
+        return loadImageSized("reference-v2/pack/icons/timer.png", 48, 48);
+    }
+
+    public static Image getOnlineStatusImage() {
+        return loadImageSized("reference-v2/pack/icons/online.png", 32, 32);
+    }
+
+    public static Image getReconnectingImage() {
+        return loadImage("realtime/reconnecting.png");
+    }
+
+    public static Image getReconnectingWifiImage() {
+        return loadImageSized("reference-v2/pack/icons/wifi-off.png", 64, 64);
+    }
+
+    public static Image getReconnectingSpinnerImage() {
+        return loadImageSized("reference-v2/pack/icons/timer.png", 64, 64);
+    }
 }

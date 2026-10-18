@@ -28,7 +28,11 @@ public final class ServerRoomController {
     }
     public void join(long roomId, long userId, boolean spectator, Integer seat,
                      Long buyIn, String password) throws SQLException {
-        rooms.join(roomId, userId, spectator, seat, buyIn, password);
+        join(roomId, userId, spectator, seat, buyIn, password, false);
+    }
+    public void join(long roomId, long userId, boolean spectator, Integer seat,
+                     Long buyIn, String password, boolean invited) throws SQLException {
+        rooms.join(roomId, userId, spectator, seat, buyIn, password, invited);
     }
     public void leave(long roomId, long userId) throws SQLException { rooms.leave(roomId, userId); }
     public void setReady(long roomId, long userId, boolean ready) throws SQLException {

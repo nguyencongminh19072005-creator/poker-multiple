@@ -16,17 +16,26 @@ public final class RealtimeController {
     private final Runnable refreshLobby;
     private final Runnable refreshFriends;
     private final java.util.function.Consumer<String> showError;
+    private final java.util.function.Consumer<com.google.gson.JsonObject> handleInvitation;
     private boolean reconnectPending;
 
     public RealtimeController(PokerSocketClient socket, AuthController auth, RoomScreens rooms,
                               Runnable refreshLobby, Runnable refreshFriends,
                               java.util.function.Consumer<String> showError) {
+        this(socket, auth, rooms, refreshLobby, refreshFriends, showError, null);
+    }
+
+    public RealtimeController(PokerSocketClient socket, AuthController auth, RoomScreens rooms,
+                              Runnable refreshLobby, Runnable refreshFriends,
+                              java.util.function.Consumer<String> showError,
+                              java.util.function.Consumer<com.google.gson.JsonObject> handleInvitation) {
         this.socket = socket;
         this.auth = auth;
         this.rooms = rooms;
         this.refreshLobby = refreshLobby;
         this.refreshFriends = refreshFriends;
         this.showError = showError;
+        this.handleInvitation = handleInvitation;
     }
 
     public void start() {
@@ -42,6 +51,9 @@ public final class RealtimeController {
         socket.subscribe("/topic/lobby", event -> Platform.runLater(refreshLobby));
         socket.subscribe("/user/queue/private", event -> Platform.runLater(rooms::refreshGame));
         socket.subscribe("/user/queue/notifications", event -> Platform.runLater(refreshFriends));
+        socket.subscribe("/user/queue/invitations", event -> Platform.runLater(() -> {
+            if (handleInvitation != null) handleInvitation.accept(event);
+        }));
         connect();
     }
 

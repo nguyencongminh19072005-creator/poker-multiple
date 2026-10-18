@@ -24,6 +24,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 import com.poker.view.CreateRoomDialog;
 import com.poker.view.HeaderNode;
+import com.poker.view.InvitationNotificationDialog;
 import com.poker.view.LobbyView;
 import com.poker.view.LoginView;
 import com.poker.view.RegisterView;
@@ -65,7 +66,7 @@ public final class PokerApplicationController implements HeaderNode.HeaderAction
         adminScreen = new AdminScreenController(adminController, auth, stage, scenes::show, this::logout,
                 scenes::showError);
         realtime = new RealtimeController(socket, auth, roomScreens, this::refreshLobby,
-                friendScreen::refresh, scenes::showError);
+                friendScreen::refresh, scenes::showError, this::handleInvitation);
     }
 
     public void start() { showLogin(); }
@@ -185,5 +186,26 @@ public final class PokerApplicationController implements HeaderNode.HeaderAction
             heartbeat.stop();
             heartbeat = null;
         }
+    }
+
+    private void handleInvitation(com.google.gson.JsonObject event) {
+        if (event == null || !event.has("roomId")) return;
+        long targetRoomId = ClientJson.number(event, "roomId");
+        String roomName = ClientJson.string(event, "roomName");
+        String inviterName = ClientJson.string(event, "inviterName");
+        long smallBlind = ClientJson.number(event, "smallBlind");
+        long bigBlind = ClientJson.number(event, "bigBlind");
+        long buyIn = ClientJson.number(event, "buyIn");
+        String password = event.has("password") && !event.get("password").isJsonNull()
+                ? event.get("password").getAsString()
+                : null;
+        String inviteToken = event.has("inviteToken") && !event.get("inviteToken").isJsonNull()
+                ? event.get("inviteToken").getAsString()
+                : null;
+        com.poker.view.SoundEffects.play(com.poker.view.SoundEffects.Sound.BUTTON_CLICK);
+        InvitationNotificationDialog.show(scenes.stage(), inviterName, roomName, targetRoomId,
+                smallBlind, bigBlind, buyIn,
+                () -> roomScreens.join(targetRoomId, password, false, inviteToken),
+                null);
     }
 }

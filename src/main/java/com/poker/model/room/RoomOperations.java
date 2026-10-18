@@ -39,13 +39,18 @@ public final class RoomOperations {
     }
     public void join(long roomId, long userId, boolean spectator, Integer seat, Long buyIn,
                      String password) throws SQLException {
+        join(roomId, userId, spectator, seat, buyIn, password, false);
+    }
+    public void join(long roomId, long userId, boolean spectator, Integer seat, Long buyIn,
+                     String password, boolean invited) throws SQLException {
         rooms.transaction(tx -> {
             RoomDao.RoomRow room = tx.lockRoom(roomId)
                     .orElseThrow(() -> new IllegalArgumentException("Phòng không tồn tại"));
             RoomAdmissionRules.requireOpen(room.status());
             RoomDao.Membership member = tx.lockMembership(roomId, userId);
             boolean converting = member.active() && member.seatNumber() == null && !spectator;
-            if ("PRIVATE".equals(room.type()) && !converting
+            boolean bypassPassword = converting || invited;
+            if ("PRIVATE".equals(room.type()) && !bypassPassword
                     && (password == null || room.passwordHash() == null
                     || !BCrypt.checkpw(password, room.passwordHash()))) {
                 throw new IllegalArgumentException("Mật khẩu phòng không đúng");

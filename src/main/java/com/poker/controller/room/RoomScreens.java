@@ -17,6 +17,9 @@ import com.poker.view.SoundEffects;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import com.poker.view.InviteFriendsDialog;
+import com.poker.network.client.ClientJson;
+import javafx.stage.Stage;
 
 import static com.poker.network.client.ClientJson.bool;
 import static com.poker.network.client.ClientJson.cards;
@@ -100,6 +103,10 @@ public final class RoomScreens {
     }
 
     public void join(long id, String password, boolean spectator) {
+        join(id, password, spectator, null);
+    }
+
+    public void join(long id, String password, boolean spectator, String inviteToken) {
         if (id <= 0) { error.accept("Mã phòng không hợp lệ"); return; }
         perform(api.request("GET", "/api/v1/rooms/" + id, null), detail -> {
             for (JsonElement element : detail.getAsJsonArray("members")) {
@@ -113,6 +120,7 @@ public final class RoomScreens {
             // down is a separate, explicit action from inside the room.
             body.addProperty("spectator", true);
             if (password != null) body.addProperty("password", password);
+            if (inviteToken != null && !inviteToken.isBlank()) body.addProperty("inviteToken", inviteToken);
             perform(api.request("POST", "/api/v1/rooms/" + id + "/join", body), joined -> enterRoom(id, joined));
         });
     }
@@ -161,7 +169,7 @@ public final class RoomScreens {
     }
 
     private void roomScreen() {
-        roomView = new PokerRoomView(this::leaveRoom);
+        roomView = new PokerRoomView(this::leaveRoom, this::openInviteDialog);
         table = createTable();
         roomView.setTable(table);
         controls = roomView.actions();
@@ -195,6 +203,45 @@ public final class RoomScreens {
         roomView.chat().setOnSend(this::sendChat);
         show.accept(roomView);
         renderRoom();
+    }
+
+    private void openInviteDialog() {
+        if (roomId <= 0 || roomView == null || roomView.getScene() == null) return;
+        Stage stage = (Stage) roomView.getScene().getWindow();
+        perform(api.list("/api/v1/friends"), friendsArray -> {
+            List<InviteFriendsDialog.FriendRow> friendRows = new ArrayList<>();
+            if (friendsArray != null) {
+                for (JsonElement el : friendsArray) {
+                    if (!el.isJsonObject()) continue;
+                    JsonObject entry = el.getAsJsonObject();
+                    JsonObject player = entry.has("otherPlayer") && entry.get("otherPlayer").isJsonObject()
+                            ? entry.getAsJsonObject("otherPlayer")
+                            : entry;
+                    long uid = number(player, "userId");
+                    String name = string(player, "displayName");
+                    String presence = string(entry, "presenceStatus");
+                    friendRows.add(new InviteFriendsDialog.FriendRow(uid, name, presence));
+                }
+            }
+            Set<Long> existingMembers = new HashSet<>();
+            if (room != null && room.has("members") && room.get("members").isJsonArray()) {
+                for (JsonElement m : room.getAsJsonArray("members")) {
+                    existingMembers.add(number(m.getAsJsonObject(), "userId"));
+                }
+            }
+            String roomName = room != null && room.has("room") && room.getAsJsonObject("room").has("name")
+                    ? string(room.getAsJsonObject("room"), "name")
+                    : ("Phòng " + roomId);
+            InviteFriendsDialog.show(stage, roomName, roomId, friendRows, existingMembers, friendId -> {
+                JsonObject body = new JsonObject();
+                body.addProperty("friendUserId", friendId);
+                api.request("POST", "/api/v1/rooms/" + roomId + "/invite", body)
+                        .exceptionally(err -> {
+                            Platform.runLater(() -> error.accept(ClientJson.cause(err)));
+                            return null;
+                        });
+            });
+        });
     }
 
     private PokerTableContainer createTable() {

@@ -45,6 +45,19 @@ final class ConnectionManager {
         });
     }
 
+    void sendToUser(long userId, String destination, JsonObject body) {
+        JsonObject event = new JsonObject();
+        event.addProperty("type", "event");
+        event.addProperty("destination", destination);
+        event.add("body", body);
+        String text = event.toString();
+        sessions.forEach((socket, session) -> {
+            if (socket.isOpen() && session.userId != null && session.userId == userId) {
+                socket.send(text);
+            }
+        });
+    }
+
     void broadcastSubscribedStateTopics() {
         Set<String> destinations = new HashSet<>();
         sessions.values().forEach(session -> destinations.addAll(session.subscriptions));

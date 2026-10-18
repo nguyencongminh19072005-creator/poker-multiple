@@ -84,8 +84,8 @@ public class CreateRoomDialog {
         leftPreviewPanel.setPadding(new Insets(30, 25, 30, 25));
         leftPreviewPanel.setStyle(OrnateUi.framedStyle());
 
-        Label lblPreviewHeader = new Label("🎴 BẢN XEM TRƯỚC BÀN CHƠI");
-        lblPreviewHeader.setFont(Font.font("Georgia", FontWeight.BOLD, 14));
+        Label lblPreviewHeader = new Label("XEM TRƯỚC BÀN CHƠI");
+        lblPreviewHeader.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
         lblPreviewHeader.setMaxWidth(Double.MAX_VALUE);
         lblPreviewHeader.setPrefHeight(58);
         lblPreviewHeader.setAlignment(Pos.CENTER);
@@ -129,8 +129,8 @@ public class CreateRoomDialog {
         rightFormPanel.setPadding(new Insets(30, 35, 30, 35));
         rightFormPanel.setStyle(OrnateUi.framedStyle());
 
-        Label formTitle = new Label("CẤU HÌNH BÀN CHƠI");
-        formTitle.setFont(Font.font("Georgia", FontWeight.BOLD, 18));
+        Label formTitle = new Label("BÀN CHƠI");
+        formTitle.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
         formTitle.setMaxWidth(Double.MAX_VALUE);
         formTitle.setPrefHeight(60);
         formTitle.setAlignment(Pos.CENTER);
@@ -169,7 +169,7 @@ public class CreateRoomDialog {
             comboPlayers.getItems().add(i);
         }
         comboPlayers.setValue(6);
-        comboPlayers.setStyle("-fx-background-color: #172f27; -fx-text-fill: white; -fx-font-size: 14px;");
+        setupDarkComboBox(comboPlayers);
 
         // Quick buttons (2-Max, 6-Max, 9-Max)
         Button q2 = new Button("2-Max");
@@ -218,7 +218,7 @@ public class CreateRoomDialog {
         comboBlinds.getItems().addAll("$10 / $20", "$50 / $100", "$100 / $200", "$500 / $1,000", "$1,000 / $2,000");
         comboBlinds.setValue("$50 / $100");
         comboBlinds.setMaxWidth(Double.MAX_VALUE);
-        comboBlinds.setStyle("-fx-background-color: #172f27; -fx-text-fill: white; -fx-font-size: 14px;");
+        setupDarkComboBox(comboBlinds);
 
         grid.add(lblBlinds, 0, 2);
         grid.add(comboBlinds, 1, 2);
@@ -304,7 +304,58 @@ public class CreateRoomDialog {
 
         Scene scene = new Scene(root, width, height);
         V2Theme.apply(scene);
+        var css = CreateRoomDialog.class.getResource("/poker-game.css");
+        if (css != null && !scene.getStylesheets().contains(css.toExternalForm())) {
+            scene.getStylesheets().add(css.toExternalForm());
+        }
         dialog.setScene(scene);
         dialog.showAndWait();
+    }
+
+    private static <T> void setupDarkComboBox(ComboBox<T> comboBox) {
+        comboBox.setStyle("-fx-background-color: #172f27; -fx-border-color: #a77b47; -fx-border-width: 1.5; -fx-border-radius: 6; -fx-background-radius: 6;");
+        comboBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.toString());
+                    setStyle("-fx-text-fill: #f5e3bb; -fx-font-family: 'Segoe UI'; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-color: transparent;");
+                }
+            }
+        });
+
+        comboBox.setCellFactory(lv -> {
+            ListCell<T> cell = new ListCell<>() {
+                @Override
+                protected void updateItem(T item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setStyle("-fx-background-color: #142821;");
+                    } else {
+                        setText(item.toString());
+                        if (isSelected()) {
+                            setStyle("-fx-background-color: #8c612e; -fx-text-fill: #ffe3a0; -fx-font-family: 'Segoe UI'; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 8 14; -fx-background-radius: 4;");
+                        } else {
+                            setStyle("-fx-background-color: #142821; -fx-text-fill: #e2e8f0; -fx-font-family: 'Segoe UI'; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 8 14; -fx-background-radius: 4;");
+                        }
+                    }
+                }
+            };
+            cell.setOnMouseEntered(e -> {
+                if (!cell.isEmpty() && !cell.isSelected()) {
+                    cell.setStyle("-fx-background-color: #234d3b; -fx-text-fill: #facc15; -fx-font-family: 'Segoe UI'; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 8 14; -fx-background-radius: 4; -fx-cursor: hand;");
+                }
+            });
+            cell.setOnMouseExited(e -> {
+                if (!cell.isEmpty() && !cell.isSelected()) {
+                    cell.setStyle("-fx-background-color: #142821; -fx-text-fill: #e2e8f0; -fx-font-family: 'Segoe UI'; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 8 14; -fx-background-radius: 4;");
+                }
+            });
+            return cell;
+        });
     }
 }

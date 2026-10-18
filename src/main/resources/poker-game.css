@@ -1,0 +1,93 @@
+/* Poker Game Theme CSS */
+
+/* ComboBox base styling */
+.combo-box {
+    -fx-background-color: #172f27;
+    -fx-border-color: #a77b47;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 14px;
+}
+
+.combo-box:hover {
+    -fx-border-color: #facc15;
+}
+
+.combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #f5e3bb;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 4 10;
+}
+
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow {
+    -fx-background-color: #e3c28d;
+}
+
+.combo-box:hover .arrow {
+    -fx-background-color: #facc15;
+}
+
+/* ComboBox Dropdown Popup (Thanh chọn trượt xuống) */
+.combo-box-popup .list-view {
+    -fx-background-color: #142821;
+    -fx-border-color: #a77b47;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.85), 12, 0, 0, 6);
+}
+
+.combo-box-popup .list-cell {
+    -fx-background-color: #142821;
+    -fx-text-fill: #e2e8f0;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 14;
+    -fx-background-radius: 4;
+}
+
+.combo-box-popup .list-cell:filled:hover {
+    -fx-background-color: #234d3b;
+    -fx-text-fill: #facc15;
+}
+
+.combo-box-popup .list-cell:filled:selected,
+.combo-box-popup .list-cell:filled:selected:hover {
+    -fx-background-color: #8c612e;
+    -fx-text-fill: #ffe3a0;
+}
+
+/* ScrollBar in dropdown */
+.combo-box-popup .list-view .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+.combo-box-popup .list-view .scroll-bar:vertical .track {
+    -fx-background-color: #0f1d18;
+    -fx-background-radius: 3;
+}
+
+.combo-box-popup .list-view .scroll-bar:vertical .thumb {
+    -fx-background-color: #8c612e;
+    -fx-background-radius: 3;
+}
+
+.combo-box-popup .list-view .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #ad814c;
+}
+
+.combo-box-popup .list-view .scroll-bar:vertical .increment-button,
+.combo-box-popup .list-view .scroll-bar:vertical .decrement-button {
+    -fx-background-color: transparent;
+}

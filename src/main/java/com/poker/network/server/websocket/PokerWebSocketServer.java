@@ -62,7 +62,8 @@ public final class PokerWebSocketServer extends WebSocketServer {
         presence = new ClientPresence(database, gameController);
         auth = new AuthCommandHandler(database, presence);
         profile = new ProfileCommandHandler(database);
-        rooms = new RoomCommandHandler(database, gameController);
+        rooms = new RoomCommandHandler(database, gameController,
+                (targetUserId, payload) -> connections.sendToUser(targetUserId, "/user/queue/invitations", payload));
         friends = new FriendCommandHandler(database);
         rankings = new RankingCommandHandler(database);
         statistics = new StatisticsCommandHandler(database);
@@ -70,7 +71,9 @@ public final class PokerWebSocketServer extends WebSocketServer {
         games = new GameCommandHandler(gameController);
     }
 
-    public void abortOrphanedGames() throws SQLException { gameController.abortOrphanedGames(); }
+    public void abortOrphanedGames() throws SQLException {
+        gameController.abortOrphanedGames();
+    }
 
     public void startServer() throws InterruptedException, IOException {
         start();
@@ -114,7 +117,8 @@ public final class PokerWebSocketServer extends WebSocketServer {
     @Override
     public void onClose(WebSocket socket, int code, String reason, boolean remote) {
         ConnectionManager.Session connection = connections.close(socket);
-        if (connection == null || connection.userId == null) return;
+        if (connection == null || connection.userId == null)
+            return;
         try {
             commands.execute(() -> {
                 try {
@@ -134,7 +138,8 @@ public final class PokerWebSocketServer extends WebSocketServer {
     @Override
     public void onMessage(WebSocket socket, String text) {
         ConnectionManager.Session connection = connections.get(socket);
-        if (connection == null || commands.isShutdown()) return;
+        if (connection == null || commands.isShutdown())
+            return;
         try {
             if (!connection.enqueue(commands, () -> processMessage(socket, text))) {
                 sendError(socket, "", 503, "Quá nhiều lệnh đang chờ xử lý");
@@ -153,7 +158,8 @@ public final class PokerWebSocketServer extends WebSocketServer {
             return;
         }
         ConnectionManager.Session connection = connections.get(socket);
-        if (connection == null) return;
+        if (connection == null)
+            return;
         String type = value(frame, "type");
         if ("subscribe".equals(type)) {
             connection.subscriptions.add(value(frame, "destination"));
@@ -171,7 +177,8 @@ public final class PokerWebSocketServer extends WebSocketServer {
             return;
         }
         JsonObject body = frame.has("body") && frame.get("body").isJsonObject()
-                ? frame.getAsJsonObject("body") : new JsonObject();
+                ? frame.getAsJsonObject("body")
+                : new JsonObject();
         CommandExchange exchange;
         try {
             exchange = new CommandExchange(method, path, body, value(frame, "token"));
@@ -204,9 +211,6 @@ public final class PokerWebSocketServer extends WebSocketServer {
             profile.handle(exchange);
         } else if (path.startsWith("/api/v1/rooms")) {
             rooms.handle(exchange);
-        } else if ("PATCH".equals(method) && "/api/v1/me".equals(path)) {
-            broadcastEvent("/topic/lobby");
-            connections.broadcastSubscribedStateTopics();
         } else if (path.startsWith("/api/v1/games/") || path.startsWith("/app/game/")) {
             games.handle(exchange);
         } else if (path.startsWith("/api/v1/friends") || path.startsWith("/api/v1/friend-requests")) {
@@ -223,7 +227,7 @@ public final class PokerWebSocketServer extends WebSocketServer {
     }
 
     private void afterSuccess(WebSocket socket, ConnectionManager.Session connection, String method,
-                              String path, JsonObject requestBody, com.google.gson.JsonElement response) {
+            String path, JsonObject requestBody, com.google.gson.JsonElement response) {
         if ("POST".equals(method) && (path.endsWith("/login") || path.endsWith("/refresh"))
                 && response != null && response.isJsonObject()) {
             JsonObject data = response.getAsJsonObject();
@@ -231,8 +235,11 @@ public final class PokerWebSocketServer extends WebSocketServer {
             connection.userId = CommandJson.userId(
                     new CommandExchange("GET", "/", null, value(data, "accessToken")));
             if (connection.userId != null) {
-                try { gameController.reconnectUser(connection.userId); }
-                catch (SQLException error) { error.printStackTrace(); }
+                try {
+                    gameController.reconnectUser(connection.userId);
+                } catch (SQLException error) {
+                    error.printStackTrace();
+                }
             }
             broadcastEvent("/topic/lobby");
             broadcastEvent("/user/queue/notifications");
@@ -247,20 +254,24 @@ public final class PokerWebSocketServer extends WebSocketServer {
             if (!"GET".equals(method)) {
                 boolean action = path.startsWith("/app/game/");
                 JsonObject data = response != null && response.isJsonObject()
-                        ? response.getAsJsonObject() : new JsonObject();
+                        ? response.getAsJsonObject()
+                        : new JsonObject();
                 JsonObject publicState = data.has("publicState") && data.get("publicState").isJsonObject()
-                        ? data.getAsJsonObject("publicState") : null;
+                        ? data.getAsJsonObject("publicState")
+                        : null;
                 boolean finished = publicState != null && "FINISHED".equals(value(publicState, "phase"));
                 // Ordinary actions only invalidate the in-memory game snapshot. Room/lobby
                 // refreshes query MySQL and are needed only for lifecycle changes.
-                if (!action || finished) broadcastEvent("/topic/lobby");
+                if (!action || finished)
+                    broadcastEvent("/topic/lobby");
                 String[] parts = path.split("/");
                 try {
                     long roomId = path.matches("/api/v1/games/rooms/\\d+/start")
                             ? Long.parseLong(parts[5])
                             : gameController.roomForGame(UUID.fromString(
                                     path.startsWith("/app/game/") ? parts[3] : parts[4]));
-                    if (!action || finished) broadcastEvent("/topic/room/" + roomId);
+                    if (!action || finished)
+                        broadcastEvent("/topic/room/" + roomId);
                 } catch (IllegalArgumentException ignored) {
                     // A command may complete after its room has already been removed.
                 }
@@ -280,12 +291,17 @@ public final class PokerWebSocketServer extends WebSocketServer {
                         broadcastEvent(destination);
                     }
                 } else if (response != null && response.isJsonObject()) {
-                    if (data.has("gameId")) broadcastEvent("/topic/game/" + value(data, "gameId"));
+                    if (data.has("gameId"))
+                        broadcastEvent("/topic/game/" + value(data, "gameId"));
                 }
             }
+        } else if ("PATCH".equals(method) && "/api/v1/me".equals(path)) {
+            broadcastEvent("/topic/lobby");
+            connections.broadcastSubscribedStateTopics();
         } else if (path.startsWith("/api/v1/friends")
                 || path.startsWith("/api/v1/friend-requests")) {
-            if (!"GET".equals(method)) broadcastEvent("/user/queue/notifications");
+            if (!"GET".equals(method))
+                broadcastEvent("/user/queue/notifications");
         } else if (path.startsWith("/api/v1/rooms")) {
             if (!"GET".equals(method)) {
                 if ("POST".equals(method) && path.matches("/api/v1/rooms/\\d+/chat/messages")) {
@@ -364,7 +380,8 @@ public final class PokerWebSocketServer extends WebSocketServer {
 
     private static String value(JsonObject object, String name) {
         return object.has(name) && !object.get(name).isJsonNull()
-                ? object.get(name).getAsString() : "";
+                ? object.get(name).getAsString()
+                : "";
     }
 
     @Override

@@ -30,6 +30,7 @@ public final class PokerRoomView extends BorderPane {
     private final Button ready = new Button("SẴN SÀNG");
     private final Button start = new Button("BẮT ĐẦU VÁN");
     private final Button leave = new Button("RỜI PHÒNG");
+    private final Button invite = new Button("MỜI BẠN");
     private final HBox waitingBar = new HBox(12);
     private final StackPane tableLayer = new StackPane();
     private final StackPane notice = new StackPane();
@@ -40,6 +41,10 @@ public final class PokerRoomView extends BorderPane {
     private PokerTableContainer table;
 
     public PokerRoomView(Runnable onLeave) {
+        this(onLeave, null);
+    }
+
+    public PokerRoomView(Runnable onLeave, Runnable onInvite) {
         // One continuous background spans the table, the chat dock, and all room margins.
         setStyle("-fx-background-color:#17241e;");
 
@@ -47,9 +52,11 @@ public final class PokerRoomView extends BorderPane {
         title.setStyle(headerText);
         blinds.setStyle(headerText);
         pot.setStyle(headerText);
+        OrnateUi.button(invite, "button-blue.png", 14);
+        invite.setOnAction(event -> { if (onInvite != null) onInvite.run(); });
         OrnateUi.button(leave, "button-red.png", 14);
         leave.setOnAction(event -> onLeave.run());
-        HBox topBar = new HBox(20, title, blinds, pot, new Region(), leave);
+        HBox topBar = new HBox(16, title, blinds, pot, new Region(), invite, leave);
         topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setPadding(new Insets(11, 18, 11, 18));
         topBar.setStyle("-fx-background-color:linear-gradient(to right,#25160f,#58311c,#25160f);"
