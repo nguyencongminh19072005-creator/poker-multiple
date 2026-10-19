@@ -132,6 +132,10 @@ public class AssetLoader {
         return loadImage("ranking/podium-123.png");
     }
 
+    public static Image getErrorFrameImage() {
+        return loadImage("modals/error-frame.png");
+    }
+
     public static Image getDealerAvatarImage() {
         return getAvatarImage("avatar_player_1.png");
     }

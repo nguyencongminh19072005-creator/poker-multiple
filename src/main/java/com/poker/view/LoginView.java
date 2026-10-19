@@ -94,14 +94,14 @@ public class LoginView extends BorderPane {
             String password = passwordField.getText().trim();
 
             if (username.isEmpty() || password.isEmpty()) {
-                errorLabel.setText("Please enter username & password");
+                errorLabel.setText("Vui lòng nhập tài khoản và mật khẩu.");
                 errorLabel.setTextFill(Color.RED);
                 errorLabel.setVisible(true);
                 return;
             }
 
             loginButton.setDisable(true);
-            errorLabel.setText("Authenticating with Server...");
+            errorLabel.setText("Đang đăng nhập...");
             errorLabel.setTextFill(Color.YELLOW);
             errorLabel.setVisible(true);
 
@@ -110,7 +110,7 @@ public class LoginView extends BorderPane {
                 if (error == null) actionHandler.onLoginSuccess(loggedInUser);
                 else {
                     errorLabel.setTextFill(Color.RED);
-                    errorLabel.setText("Login error: " + (error.getCause() == null ? error.getMessage() : error.getCause().getMessage()));
+                    errorLabel.setText(UserFacingErrors.fromFailure(error));
                     errorLabel.setVisible(true);
                 }
             }));

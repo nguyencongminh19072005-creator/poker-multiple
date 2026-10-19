@@ -6,11 +6,23 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PokerSocketClientTests {
+    @Test
+    void readsClientAddressFromProjectEnvFile(@TempDir Path directory) throws Exception {
+        Path env = directory.resolve(".env");
+        Files.writeString(env, "DB_PASSWORD=not-used-by-client\n"
+                + "POKER_WS_URL=\"ws://26.0.203.64:8080/ws\"\n");
+        assertThat(PokerSocketClient.urlFromEnvFile(env))
+                .isEqualTo("ws://26.0.203.64:8080/ws");
+    }
+
     @Test
     void clientRejectsAnHttpUrlInsteadOfOpeningAnHttpApi() {
         assertThatThrownBy(() -> new PokerSocketClient("http://127.0.0.1:8081/ws"))

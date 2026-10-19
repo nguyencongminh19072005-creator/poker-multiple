@@ -104,29 +104,29 @@ public class RegisterView extends BorderPane {
             String confirmPassword = confirmPasswordField.getText();
 
             if (username.isEmpty() || password.isEmpty()) {
-                errorLabel.setText("Please fill all fields!");
+                errorLabel.setText("Vui lòng điền đầy đủ thông tin.");
                 errorLabel.setTextFill(Color.RED);
                 errorLabel.setVisible(true);
                 return;
             } else if (!password.equals(confirmPassword)) {
-                errorLabel.setText("Passwords do not match!");
+                errorLabel.setText("Mật khẩu xác nhận không khớp.");
                 errorLabel.setTextFill(Color.RED);
                 errorLabel.setVisible(true);
                 return;
             } else if (!username.matches("[A-Za-z0-9_]{3,50}")) {
-                errorLabel.setText("Username must be 3-50 characters: letters, numbers, or _.");
+                errorLabel.setText("Tên đăng nhập cần 3–50 ký tự, chỉ gồm chữ, số hoặc dấu gạch dưới.");
                 errorLabel.setTextFill(Color.RED);
                 errorLabel.setVisible(true);
                 return;
             } else if (password.length() < 8 || password.length() > 72) {
-                errorLabel.setText("Password must be 8-72 characters.");
+                errorLabel.setText("Mật khẩu cần từ 8 đến 72 ký tự.");
                 errorLabel.setTextFill(Color.RED);
                 errorLabel.setVisible(true);
                 return;
             }
 
             registerButton.setDisable(true);
-            errorLabel.setText("Registering with Server...");
+            errorLabel.setText("Đang đăng ký...");
             errorLabel.setTextFill(Color.YELLOW);
             errorLabel.setVisible(true);
 
@@ -136,7 +136,7 @@ public class RegisterView extends BorderPane {
                 if (error == null) actionHandler.onRegisterSuccess(username);
                 else {
                     errorLabel.setTextFill(Color.RED);
-                    errorLabel.setText("Register error: " + (error.getCause() == null ? error.getMessage() : error.getCause().getMessage()));
+                    errorLabel.setText(UserFacingErrors.fromFailure(error));
                     errorLabel.setVisible(true);
                 }
             }));

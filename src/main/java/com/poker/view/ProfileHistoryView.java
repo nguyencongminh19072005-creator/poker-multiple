@@ -567,9 +567,7 @@ public class ProfileHistoryView extends BorderPane {
                     javafx.application.Platform.runLater(() -> {
                         btnSave.setDisable(false);
                         if (failure != null) {
-                            Throwable cause = failure;
-                            while (cause.getCause() != null) cause = cause.getCause();
-                            saveStatus.setText("Lưu thất bại: " + cause.getMessage());
+                            saveStatus.setText(UserFacingErrors.fromFailure(failure));
                         } else {
                             currentUsername = name;
                             currentAvatar = selectedAvatar[0];

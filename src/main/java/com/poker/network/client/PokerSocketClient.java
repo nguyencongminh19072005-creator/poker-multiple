@@ -6,9 +6,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -66,8 +70,37 @@ public final class PokerSocketClient
     // =====================================================
 
     public PokerSocketClient() {
-        this(System.getenv().getOrDefault(
-                "POKER_WS_URL", DEFAULT_URL));
+        this(configuredUrl());
+    }
+
+    private static String configuredUrl() {
+        String environment = System.getenv("POKER_WS_URL");
+        if (environment != null && !environment.isBlank()) return environment.trim();
+        // VS Code can inject envFile; direct ClientMain/run-client.cmd also reads
+        // the project-local URL. The client never uses database settings.
+        String projectSetting = urlFromEnvFile(Path.of("poker-mvc", ".env"));
+        if (projectSetting != null) return projectSetting;
+        String localSetting = urlFromEnvFile(Path.of(".env"));
+        return localSetting != null ? localSetting : DEFAULT_URL;
+    }
+
+    static String urlFromEnvFile(Path file) {
+        if (!Files.isRegularFile(file)) return null;
+        try {
+            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+                String setting = line.trim();
+                if (!setting.startsWith("POKER_WS_URL=")) continue;
+                String value = setting.substring("POKER_WS_URL=".length()).trim();
+                if (value.length() >= 2 && ((value.startsWith("\"") && value.endsWith("\""))
+                        || (value.startsWith("'") && value.endsWith("'")))) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                return value.isBlank() ? null : value;
+            }
+        } catch (IOException ignored) {
+            // Keep the documented localhost default when no local config is readable.
+        }
+        return null;
     }
 
     public PokerSocketClient(String url) {
